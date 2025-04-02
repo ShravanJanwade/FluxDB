@@ -5,3 +5,4 @@
 - 2025-04-02 09:44:50: test: fix flaky tests
 - 2025-04-02 20:04:03: fix(server): fix connection leak on timeout
 - 2025-04-02 21:13:02: test: fix flaky tests
+- 2025-04-02 15:47:53: perf(sstable): optimize block encoding
