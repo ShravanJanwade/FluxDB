@@ -6,3 +6,4 @@
 - 2025-04-02 20:04:03: fix(server): fix connection leak on timeout
 - 2025-04-02 21:13:02: test: fix flaky tests
 - 2025-04-02 15:47:53: perf(sstable): optimize block encoding
+- 2025-04-03 16:56:12: feat(server): setup basic tcp listener
