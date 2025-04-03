@@ -7,3 +7,4 @@
 - 2025-04-02 21:13:02: test: fix flaky tests
 - 2025-04-02 15:47:53: perf(sstable): optimize block encoding
 - 2025-04-03 16:56:12: feat(server): setup basic tcp listener
+- 2025-04-03 15:55:57: chore(logging): switch to tracing crate
