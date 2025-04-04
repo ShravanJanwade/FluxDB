@@ -9,3 +9,4 @@
 - 2025-04-03 16:56:12: feat(server): setup basic tcp listener
 - 2025-04-03 15:55:57: chore(logging): switch to tracing crate
 - 2025-04-04 16:19:24: fix(mvcc): fix visibility rules for snapshots
+- 2025-04-04 17:50:15: feat(config): add configuration file loading
