@@ -11,3 +11,4 @@
 - 2025-04-04 16:19:24: fix(mvcc): fix visibility rules for snapshots
 - 2025-04-04 17:50:15: feat(config): add configuration file loading
 - 2025-04-04 16:31:36: docs: update README with getting started
+- 2025-04-04 17:30:05: feat(wal): implement write-ahead logging basic
