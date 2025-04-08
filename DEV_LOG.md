@@ -14,3 +14,4 @@
 - 2025-04-04 17:30:05: feat(wal): implement write-ahead logging basic
 - 2025-04-07 20:10:01: refactor: improve code readability
 - 2025-04-07 14:36:52: feat(query): support basic SELECT statements
+- 2025-04-08 15:59:54: feat(compaction): add background compaction thread
