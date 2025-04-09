@@ -16,3 +16,4 @@
 - 2025-04-07 14:36:52: feat(query): support basic SELECT statements
 - 2025-04-08 15:59:54: feat(compaction): add background compaction thread
 - 2025-04-08 09:52:24: feat(visualizer): add query plan visualization
+- 2025-04-09 11:05:02: docs: update API reference
