@@ -17,3 +17,4 @@
 - 2025-04-08 15:59:54: feat(compaction): add background compaction thread
 - 2025-04-08 09:52:24: feat(visualizer): add query plan visualization
 - 2025-04-09 11:05:02: docs: update API reference
+- 2025-04-10 15:09:09: refactor: improve code readability
