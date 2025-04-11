@@ -19,3 +19,4 @@
 - 2025-04-09 11:05:02: docs: update API reference
 - 2025-04-10 15:09:09: refactor: improve code readability
 - 2025-04-11 20:38:45: feat(server): support multiple simultaneous connections
+- 2025-04-11 18:50:26: fix: fix typo in documentation
