@@ -18,3 +18,4 @@
 - 2025-04-08 09:52:24: feat(visualizer): add query plan visualization
 - 2025-04-09 11:05:02: docs: update API reference
 - 2025-04-10 15:09:09: refactor: improve code readability
+- 2025-04-11 20:38:45: feat(server): support multiple simultaneous connections
