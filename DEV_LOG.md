@@ -23,3 +23,4 @@
 - 2025-04-14 16:32:18: chore(logging): switch to tracing crate
 - 2025-04-15 19:23:29: feat(query-editor): add monaco editor integration
 - 2025-04-16 16:37:25: feat(index): implement B-Tree index support
+- 2025-04-16 12:39:06: fix(compaction): fix race condition in file deletion
