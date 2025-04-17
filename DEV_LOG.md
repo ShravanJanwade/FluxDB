@@ -26,3 +26,4 @@
 - 2025-04-16 12:39:06: fix(compaction): fix race condition in file deletion
 - 2025-04-17 09:05:36: feat(index): implement B-Tree index support
 - 2025-04-17 22:10:24: feat(components): add button and input components
+- 2025-04-17 16:11:00: feat(txn): add basic transaction manager
