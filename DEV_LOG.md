@@ -28,3 +28,4 @@
 - 2025-04-17 22:10:24: feat(components): add button and input components
 - 2025-04-17 16:11:00: feat(txn): add basic transaction manager
 - 2025-04-17 14:51:23: feat(dashboard): create main layout structure
+- 2025-04-17 17:21:21: feat(skiplist): add initial implementation of memtable
