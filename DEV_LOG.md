@@ -32,3 +32,4 @@
 - 2025-04-18 11:17:48: feat(query-editor): add monaco editor integration
 - 2025-04-18 17:32:25: style(ui): update color theme to dark mode
 - 2025-04-21 16:54:05: feat(connection): add database connection modal
+- 2025-04-21 11:41:36: perf(server): perform async io handling
