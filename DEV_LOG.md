@@ -31,3 +31,4 @@
 - 2025-04-17 17:21:21: feat(skiplist): add initial implementation of memtable
 - 2025-04-18 11:17:48: feat(query-editor): add monaco editor integration
 - 2025-04-18 17:32:25: style(ui): update color theme to dark mode
+- 2025-04-21 16:54:05: feat(connection): add database connection modal
