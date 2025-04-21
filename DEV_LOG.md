@@ -33,3 +33,4 @@
 - 2025-04-18 17:32:25: style(ui): update color theme to dark mode
 - 2025-04-21 16:54:05: feat(connection): add database connection modal
 - 2025-04-21 11:41:36: perf(server): perform async io handling
+- 2025-04-21 10:19:15: feat(config): add configuration file loading
