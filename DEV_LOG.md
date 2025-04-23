@@ -37,3 +37,4 @@
 - 2025-04-22 16:17:37: fix(layout): fix responsive issues on sidebar
 - 2025-04-22 14:48:30: fix(parser): handle trailing semicolons correctly
 - 2025-04-23 15:58:17: feat(query): support INSERT statements
+- 2025-04-23 16:32:05: fix(connection): validate input fields
