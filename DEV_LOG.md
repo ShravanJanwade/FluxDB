@@ -39,3 +39,4 @@
 - 2025-04-23 15:58:17: feat(query): support INSERT statements
 - 2025-04-23 16:32:05: fix(connection): validate input fields
 - 2025-04-24 14:33:41: perf(sstable): optimize block encoding
+- 2025-04-24 17:17:30: chore(deps): update npm packages
