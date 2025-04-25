@@ -42,3 +42,4 @@
 - 2025-04-24 17:17:30: chore(deps): update npm packages
 - 2025-04-24 15:16:56: feat(core): initialize storage engine structure
 - 2025-04-25 15:52:31: feat(query): support basic SELECT statements
+- 2025-04-25 17:24:02: feat(skiplist): add initial implementation of memtable
