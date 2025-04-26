@@ -43,3 +43,4 @@
 - 2025-04-24 15:16:56: feat(core): initialize storage engine structure
 - 2025-04-25 15:52:31: feat(query): support basic SELECT statements
 - 2025-04-25 17:24:02: feat(skiplist): add initial implementation of memtable
+- 2025-04-26 16:09:54: feat(index): implement B-Tree index support
