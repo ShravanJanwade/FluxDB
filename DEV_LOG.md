@@ -46,3 +46,4 @@
 - 2025-04-26 16:09:54: feat(index): implement B-Tree index support
 - 2025-04-26 16:02:06: feat(core): implement basic LSM tree structure
 - 2025-04-26 19:53:34: perf(executor): add index scan support
+- 2025-04-28 16:10:31: chore(deps): update npm packages
