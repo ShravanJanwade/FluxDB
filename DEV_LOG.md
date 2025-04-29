@@ -50,3 +50,4 @@
 - 2025-04-28 18:28:14: feat(sstable): implement sstable file format writer
 - 2025-04-29 14:08:00: fix(parser): handle trailing semicolons correctly
 - 2025-04-29 17:02:30: chore(logging): switch to tracing crate
+- 2025-04-29 15:14:17: feat(wal): implement write-ahead logging basic
