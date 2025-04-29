@@ -48,3 +48,4 @@
 - 2025-04-26 19:53:34: perf(executor): add index scan support
 - 2025-04-28 16:10:31: chore(deps): update npm packages
 - 2025-04-28 18:28:14: feat(sstable): implement sstable file format writer
+- 2025-04-29 14:08:00: fix(parser): handle trailing semicolons correctly
