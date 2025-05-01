@@ -53,3 +53,4 @@
 - 2025-04-29 15:14:17: feat(wal): implement write-ahead logging basic
 - 2025-04-30 10:35:58: feat(compaction): add background compaction thread
 - 2025-04-30 19:58:45: refactor(hooks): extract useQuery hook
+- 2025-05-01 10:38:02: docs: update README with getting started
