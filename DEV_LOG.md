@@ -54,3 +54,4 @@
 - 2025-04-30 10:35:58: feat(compaction): add background compaction thread
 - 2025-04-30 19:58:45: refactor(hooks): extract useQuery hook
 - 2025-05-01 10:38:02: docs: update README with getting started
+- 2025-05-01 23:35:43: fix(table): fix column width calculation
