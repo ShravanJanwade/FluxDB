@@ -56,3 +56,4 @@
 - 2025-05-01 10:38:02: docs: update README with getting started
 - 2025-05-01 23:35:43: fix(table): fix column width calculation
 - 2025-05-02 18:30:05: fix(api): improve error handling messages
+- 2025-05-02 16:34:47: refactor(core): cleanup module structure
