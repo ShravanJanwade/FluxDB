@@ -59,3 +59,4 @@
 - 2025-05-02 16:34:47: refactor(core): cleanup module structure
 - 2025-05-05 16:00:24: fix(index): handle node splitting correctly
 - 2025-05-06 13:29:51: ci: add github actions workflow
+- 2025-05-06 16:06:47: feat(core): initialize storage engine structure
