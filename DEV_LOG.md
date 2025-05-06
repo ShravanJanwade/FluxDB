@@ -60,3 +60,4 @@
 - 2025-05-05 16:00:24: fix(index): handle node splitting correctly
 - 2025-05-06 13:29:51: ci: add github actions workflow
 - 2025-05-06 16:06:47: feat(core): initialize storage engine structure
+- 2025-05-06 11:24:02: feat(server): implement wire protocol v1
