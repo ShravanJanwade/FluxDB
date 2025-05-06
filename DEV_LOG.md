@@ -62,3 +62,4 @@
 - 2025-05-06 16:06:47: feat(core): initialize storage engine structure
 - 2025-05-06 11:24:02: feat(server): implement wire protocol v1
 - 2025-05-06 10:33:59: chore(deps): update rust dependencies
+- 2025-05-06 16:06:39: feat(query-editor): support syntax highlighting for sql
