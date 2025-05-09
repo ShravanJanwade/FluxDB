@@ -68,3 +68,4 @@
 - 2025-05-08 14:14:43: chore(cargo): optimize build profile
 - 2025-05-09 19:05:40: feat(history): save query history locally
 - 2025-05-09 15:32:25: fix(electron): allow window resizing
+- 2025-05-09 18:28:40: feat(auth): implement basic basic auth
