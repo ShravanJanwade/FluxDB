@@ -67,3 +67,4 @@
 - 2025-05-07 18:37:08: feat(server): implement wire protocol v1
 - 2025-05-08 14:14:43: chore(cargo): optimize build profile
 - 2025-05-09 19:05:40: feat(history): save query history locally
+- 2025-05-09 15:32:25: fix(electron): allow window resizing
