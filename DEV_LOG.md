@@ -70,3 +70,4 @@
 - 2025-05-09 15:32:25: fix(electron): allow window resizing
 - 2025-05-09 18:28:40: feat(auth): implement basic basic auth
 - 2025-05-12 17:33:50: fix(skiplist): fix pointer manipulation in insert
+- 2025-05-12 19:24:27: feat(compaction): add background compaction thread
