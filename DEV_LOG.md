@@ -69,3 +69,4 @@
 - 2025-05-09 19:05:40: feat(history): save query history locally
 - 2025-05-09 15:32:25: fix(electron): allow window resizing
 - 2025-05-09 18:28:40: feat(auth): implement basic basic auth
+- 2025-05-12 17:33:50: fix(skiplist): fix pointer manipulation in insert
