@@ -74,3 +74,4 @@
 - 2025-05-12 10:49:37: feat(compaction): add background compaction thread
 - 2025-05-13 20:42:17: feat(visualizer): add query plan visualization
 - 2025-05-13 11:23:43: fix(connection): validate input fields
+- 2025-05-13 14:42:24: feat(settings): add user preferences page
