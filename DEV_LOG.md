@@ -75,3 +75,4 @@
 - 2025-05-13 20:42:17: feat(visualizer): add query plan visualization
 - 2025-05-13 11:23:43: fix(connection): validate input fields
 - 2025-05-13 14:42:24: feat(settings): add user preferences page
+- 2025-05-13 11:08:34: feat(studio): initialize electron project
