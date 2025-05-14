@@ -72,3 +72,4 @@
 - 2025-05-12 17:33:50: fix(skiplist): fix pointer manipulation in insert
 - 2025-05-12 19:24:27: feat(compaction): add background compaction thread
 - 2025-05-12 10:49:37: feat(compaction): add background compaction thread
+- 2025-05-13 20:42:17: feat(visualizer): add query plan visualization
