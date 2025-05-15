@@ -80,3 +80,4 @@
 - 2025-05-15 14:31:19: perf(studio): optimize bundle size
 - 2025-05-15 14:52:04: feat(query): building AST parser for SQL
 - 2025-05-15 16:53:58: perf(server): perform async io handling
+- 2025-05-15 18:51:48: feat(server): setup basic tcp listener
