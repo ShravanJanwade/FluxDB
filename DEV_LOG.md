@@ -77,3 +77,4 @@
 - 2025-05-13 14:42:24: feat(settings): add user preferences page
 - 2025-05-13 11:08:34: feat(studio): initialize electron project
 - 2025-05-14 11:10:56: feat(components): add button and input components
+- 2025-05-15 14:31:19: perf(studio): optimize bundle size
