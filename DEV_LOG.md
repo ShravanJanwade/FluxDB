@@ -82,3 +82,4 @@
 - 2025-05-15 16:53:58: perf(server): perform async io handling
 - 2025-05-15 18:51:48: feat(server): setup basic tcp listener
 - 2025-05-15 10:14:08: feat(core): initialize storage engine structure
+- 2025-05-16 23:33:38: chore(deps): update rust dependencies
