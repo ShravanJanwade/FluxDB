@@ -86,3 +86,4 @@
 - 2025-05-17 14:14:45: feat(settings): add user preferences page
 - 2025-05-17 10:55:22: feat(server): support multiple simultaneous connections
 - 2025-05-18 16:36:26: feat(index): implement B-Tree index support
+- 2025-05-19 16:37:32: chore: cleanup unused files
