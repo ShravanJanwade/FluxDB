@@ -88,3 +88,4 @@
 - 2025-05-18 16:36:26: feat(index): implement B-Tree index support
 - 2025-05-19 16:37:32: chore: cleanup unused files
 - 2025-05-21 15:52:10: fix(parser): handle trailing semicolons correctly
+- 2025-05-21 20:09:09: feat(studio): initialize electron project
