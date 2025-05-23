@@ -92,3 +92,4 @@
 - 2025-05-22 18:53:51: refactor(hooks): extract useQuery hook
 - 2025-05-22 16:24:03: perf(studio): optimize bundle size
 - 2025-05-23 09:39:03: feat(sstable): implement sstable file format writer
+- 2025-05-23 11:05:10: perf(sstable): optimize block encoding
