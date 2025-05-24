@@ -93,3 +93,4 @@
 - 2025-05-22 16:24:03: perf(studio): optimize bundle size
 - 2025-05-23 09:39:03: feat(sstable): implement sstable file format writer
 - 2025-05-23 11:05:10: perf(sstable): optimize block encoding
+- 2025-05-24 11:35:53: feat(results): display query results in table
