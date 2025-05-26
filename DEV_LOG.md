@@ -98,3 +98,4 @@
 - 2025-05-26 17:13:58: chore(logging): switch to tracing crate
 - 2025-05-26 21:28:53: fix: fix typo in documentation
 - 2025-05-26 18:34:58: feat(sidebar): add table explorer tree view
+- 2025-05-26 17:06:10: perf(sstable): optimize block encoding
