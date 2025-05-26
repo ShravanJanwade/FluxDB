@@ -97,3 +97,4 @@
 - 2025-05-26 21:32:05: chore(deps): update rust dependencies
 - 2025-05-26 17:13:58: chore(logging): switch to tracing crate
 - 2025-05-26 21:28:53: fix: fix typo in documentation
+- 2025-05-26 18:34:58: feat(sidebar): add table explorer tree view
