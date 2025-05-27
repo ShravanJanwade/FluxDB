@@ -94,3 +94,4 @@
 - 2025-05-23 09:39:03: feat(sstable): implement sstable file format writer
 - 2025-05-23 11:05:10: perf(sstable): optimize block encoding
 - 2025-05-24 11:35:53: feat(results): display query results in table
+- 2025-05-26 21:32:05: chore(deps): update rust dependencies
