@@ -99,3 +99,4 @@
 - 2025-05-26 21:28:53: fix: fix typo in documentation
 - 2025-05-26 18:34:58: feat(sidebar): add table explorer tree view
 - 2025-05-26 17:06:10: perf(sstable): optimize block encoding
+- 2025-05-27 13:55:45: feat(query): building AST parser for SQL
