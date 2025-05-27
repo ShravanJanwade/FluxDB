@@ -96,3 +96,4 @@
 - 2025-05-24 11:35:53: feat(results): display query results in table
 - 2025-05-26 21:32:05: chore(deps): update rust dependencies
 - 2025-05-26 17:13:58: chore(logging): switch to tracing crate
+- 2025-05-26 21:28:53: fix: fix typo in documentation
