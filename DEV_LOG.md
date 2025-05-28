@@ -101,3 +101,4 @@
 - 2025-05-26 17:06:10: perf(sstable): optimize block encoding
 - 2025-05-27 13:55:45: feat(query): building AST parser for SQL
 - 2025-05-28 11:01:20: feat(ui): setup react and tailwindcss
+- 2025-05-28 10:31:14: chore(cargo): optimize build profile
