@@ -105,3 +105,4 @@
 - 2025-05-28 20:55:48: test(core): add integration tests for storage engine
 - 2025-05-29 23:27:46: feat(skiplist): add initial implementation of memtable
 - 2025-05-30 13:35:31: test(core): add unit tests for memtable
+- 2025-05-30 16:34:53: refactor(core): cleanup module structure
