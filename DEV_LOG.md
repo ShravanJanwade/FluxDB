@@ -109,3 +109,4 @@
 - 2025-06-02 10:36:16: feat(auth): implement basic basic auth
 - 2025-06-02 12:34:21: test(core): add unit tests for memtable
 - 2025-06-02 23:28:50: fix(layout): fix responsive issues on sidebar
+- 2025-06-02 17:31:07: feat(server): support multiple simultaneous connections
