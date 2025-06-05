@@ -112,3 +112,4 @@
 - 2025-06-02 17:31:07: feat(server): support multiple simultaneous connections
 - 2025-06-02 18:30:26: refactor(server): decouple protocol handler from socket
 - 2025-06-05 20:58:44: test(core): add unit tests for memtable
+- 2025-06-05 11:42:43: feat(query-editor): add monaco editor integration
