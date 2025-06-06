@@ -115,3 +115,4 @@
 - 2025-06-05 11:42:43: feat(query-editor): add monaco editor integration
 - 2025-06-06 16:02:41: feat(query): support basic SELECT statements
 - 2025-06-06 17:54:12: fix(index): handle node splitting correctly
+- 2025-06-06 15:31:13: perf(memtable): optimize insertion performance
