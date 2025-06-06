@@ -111,3 +111,4 @@
 - 2025-06-02 23:28:50: fix(layout): fix responsive issues on sidebar
 - 2025-06-02 17:31:07: feat(server): support multiple simultaneous connections
 - 2025-06-02 18:30:26: refactor(server): decouple protocol handler from socket
+- 2025-06-05 20:58:44: test(core): add unit tests for memtable
