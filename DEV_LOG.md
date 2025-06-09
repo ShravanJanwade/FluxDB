@@ -117,3 +117,4 @@
 - 2025-06-06 17:54:12: fix(index): handle node splitting correctly
 - 2025-06-06 15:31:13: perf(memtable): optimize insertion performance
 - 2025-06-09 14:57:46: fix(table): fix column width calculation
+- 2025-06-09 11:06:00: feat(executor): implement scanning of tables
