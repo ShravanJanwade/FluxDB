@@ -121,3 +121,4 @@
 - 2025-06-11 16:08:02: feat(config): add configuration file loading
 - 2025-06-11 10:21:04: test(core): add unit tests for memtable
 - 2025-06-12 10:01:21: feat(server): setup basic tcp listener
+- 2025-06-12 16:27:16: fix(electron): allow window resizing
