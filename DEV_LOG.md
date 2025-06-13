@@ -123,3 +123,4 @@
 - 2025-06-12 10:01:21: feat(server): setup basic tcp listener
 - 2025-06-12 16:27:16: fix(electron): allow window resizing
 - 2025-06-13 19:28:36: fix: fix typo in documentation
+- 2025-06-13 12:37:54: feat(core): implement basic LSM tree structure
