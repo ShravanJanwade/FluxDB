@@ -126,3 +126,4 @@
 - 2025-06-13 12:37:54: feat(core): implement basic LSM tree structure
 - 2025-06-16 22:55:39: docs: update README with getting started
 - 2025-06-16 17:49:08: feat(core): initialize storage engine structure
+- 2025-06-16 16:27:42: fix(compaction): fix race condition in file deletion
