@@ -125,3 +125,4 @@
 - 2025-06-13 19:28:36: fix: fix typo in documentation
 - 2025-06-13 12:37:54: feat(core): implement basic LSM tree structure
 - 2025-06-16 22:55:39: docs: update README with getting started
+- 2025-06-16 17:49:08: feat(core): initialize storage engine structure
