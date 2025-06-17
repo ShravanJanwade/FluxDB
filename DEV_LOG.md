@@ -128,3 +128,4 @@
 - 2025-06-16 17:49:08: feat(core): initialize storage engine structure
 - 2025-06-16 16:27:42: fix(compaction): fix race condition in file deletion
 - 2025-06-16 11:59:37: feat(query-editor): support syntax highlighting for sql
+- 2025-06-17 14:55:40: test(core): add integration tests for storage engine
