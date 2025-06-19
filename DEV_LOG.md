@@ -130,3 +130,4 @@
 - 2025-06-16 11:59:37: feat(query-editor): support syntax highlighting for sql
 - 2025-06-17 14:55:40: test(core): add integration tests for storage engine
 - 2025-06-18 11:52:16: fix(parser): handle trailing semicolons correctly
+- 2025-06-19 10:32:39: chore(deps): update npm packages
