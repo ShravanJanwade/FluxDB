@@ -131,3 +131,4 @@
 - 2025-06-17 14:55:40: test(core): add integration tests for storage engine
 - 2025-06-18 11:52:16: fix(parser): handle trailing semicolons correctly
 - 2025-06-19 10:32:39: chore(deps): update npm packages
+- 2025-06-19 20:44:56: feat(sidebar): add table explorer tree view
