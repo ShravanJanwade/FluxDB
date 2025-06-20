@@ -132,3 +132,4 @@
 - 2025-06-18 11:52:16: fix(parser): handle trailing semicolons correctly
 - 2025-06-19 10:32:39: chore(deps): update npm packages
 - 2025-06-19 20:44:56: feat(sidebar): add table explorer tree view
+- 2025-06-20 16:38:40: perf(executor): add index scan support
