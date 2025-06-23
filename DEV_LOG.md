@@ -135,3 +135,4 @@
 - 2025-06-20 16:38:40: perf(executor): add index scan support
 - 2025-06-20 13:04:12: perf(sstable): optimize block encoding
 - 2025-06-20 09:40:14: refactor: improve code readability
+- 2025-06-23 09:30:01: feat(config): add configuration file loading
