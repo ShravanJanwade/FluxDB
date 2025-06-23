@@ -139,3 +139,4 @@
 - 2025-06-23 15:48:17: chore: cleanup unused files
 - 2025-06-23 10:17:32: feat(sidebar): add table explorer tree view
 - 2025-06-23 11:09:34: chore(logging): switch to tracing crate
+- 2025-06-23 15:09:12: feat(components): add button and input components
