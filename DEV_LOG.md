@@ -141,3 +141,4 @@
 - 2025-06-23 11:09:34: chore(logging): switch to tracing crate
 - 2025-06-23 15:09:12: feat(components): add button and input components
 - 2025-06-24 19:35:12: chore: gitignore update
+- 2025-06-25 11:46:51: fix(compaction): fix race condition in file deletion
