@@ -143,3 +143,4 @@
 - 2025-06-24 19:35:12: chore: gitignore update
 - 2025-06-25 11:46:51: fix(compaction): fix race condition in file deletion
 - 2025-06-25 13:46:17: feat(txn): add basic transaction manager
+- 2025-06-26 16:09:59: fix(parser): handle trailing semicolons correctly
