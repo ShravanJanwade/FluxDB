@@ -145,3 +145,4 @@
 - 2025-06-25 13:46:17: feat(txn): add basic transaction manager
 - 2025-06-26 16:09:59: fix(parser): handle trailing semicolons correctly
 - 2025-06-26 15:53:51: chore: cleanup unused files
+- 2025-06-26 11:24:25: perf(sstable): optimize block encoding
