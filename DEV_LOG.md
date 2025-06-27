@@ -148,3 +148,4 @@
 - 2025-06-26 11:24:25: perf(sstable): optimize block encoding
 - 2025-06-26 16:02:55: feat(components): add button and input components
 - 2025-06-27 14:48:07: perf(executor): add index scan support
+- 2025-06-27 10:49:12: feat(core): implement basic LSM tree structure
