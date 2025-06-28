@@ -150,3 +150,4 @@
 - 2025-06-27 14:48:07: perf(executor): add index scan support
 - 2025-06-27 10:49:12: feat(core): implement basic LSM tree structure
 - 2025-06-28 10:32:41: perf(executor): add index scan support
+- 2025-06-28 15:25:50: feat(metrics): add prometheus metrics exporter
