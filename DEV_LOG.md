@@ -152,3 +152,4 @@
 - 2025-06-28 10:32:41: perf(executor): add index scan support
 - 2025-06-28 15:25:50: feat(metrics): add prometheus metrics exporter
 - 2025-06-29 23:48:37: feat(executor): implement scanning of tables
+- 2025-06-29 10:51:30: feat(query): support INSERT statements
