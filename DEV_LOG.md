@@ -157,3 +157,4 @@
 - 2025-06-30 09:19:10: feat(metrics): add prometheus metrics exporter
 - 2025-07-01 11:14:14: perf(executor): add index scan support
 - 2025-07-02 14:35:42: fix(connection): validate input fields
+- 2025-07-02 10:18:57: feat(visualizer): add query plan visualization
