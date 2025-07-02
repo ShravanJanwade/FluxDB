@@ -156,3 +156,4 @@
 - 2025-06-30 18:31:25: test(core): add unit tests for memtable
 - 2025-06-30 09:19:10: feat(metrics): add prometheus metrics exporter
 - 2025-07-01 11:14:14: perf(executor): add index scan support
+- 2025-07-02 14:35:42: fix(connection): validate input fields
