@@ -160,3 +160,4 @@
 - 2025-07-02 10:18:57: feat(visualizer): add query plan visualization
 - 2025-07-04 16:14:31: perf(server): perform async io handling
 - 2025-07-04 11:21:31: feat(query): support INSERT statements
+- 2025-07-07 15:18:01: chore(logging): switch to tracing crate
