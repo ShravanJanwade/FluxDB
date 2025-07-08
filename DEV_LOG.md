@@ -163,3 +163,4 @@
 - 2025-07-07 15:18:01: chore(logging): switch to tracing crate
 - 2025-07-07 14:33:44: refactor(server): decouple protocol handler from socket
 - 2025-07-08 16:15:46: feat(auth): implement basic basic auth
+- 2025-07-08 16:35:17: feat(results): display query results in table
