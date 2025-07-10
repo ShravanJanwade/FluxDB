@@ -165,3 +165,4 @@
 - 2025-07-08 16:15:46: feat(auth): implement basic basic auth
 - 2025-07-08 16:35:17: feat(results): display query results in table
 - 2025-07-09 10:28:58: feat(server): support multiple simultaneous connections
+- 2025-07-10 14:38:20: refactor(hooks): extract useQuery hook
