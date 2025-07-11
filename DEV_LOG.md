@@ -167,3 +167,4 @@
 - 2025-07-09 10:28:58: feat(server): support multiple simultaneous connections
 - 2025-07-10 14:38:20: refactor(hooks): extract useQuery hook
 - 2025-07-11 23:37:17: docs: add architecture diagram
+- 2025-07-11 17:03:26: feat(query-editor): support syntax highlighting for sql
