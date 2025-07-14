@@ -169,3 +169,4 @@
 - 2025-07-11 23:37:17: docs: add architecture diagram
 - 2025-07-11 17:03:26: feat(query-editor): support syntax highlighting for sql
 - 2025-07-11 11:03:33: feat(auth): implement basic basic auth
+- 2025-07-14 18:49:18: feat(txn): add basic transaction manager
