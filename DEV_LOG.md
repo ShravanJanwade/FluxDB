@@ -171,3 +171,4 @@
 - 2025-07-11 11:03:33: feat(auth): implement basic basic auth
 - 2025-07-14 18:49:18: feat(txn): add basic transaction manager
 - 2025-07-14 14:56:42: fix(parser): handle trailing semicolons correctly
+- 2025-07-15 13:30:12: fix(index): handle node splitting correctly
