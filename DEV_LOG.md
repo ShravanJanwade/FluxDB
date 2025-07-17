@@ -175,3 +175,4 @@
 - 2025-07-15 11:58:23: fix(wal): correct log rotation logic
 - 2025-07-16 09:51:29: fix(api): improve error handling messages
 - 2025-07-17 09:23:07: feat(core): initialize storage engine structure
+- 2025-07-17 14:54:29: chore: gitignore update
