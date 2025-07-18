@@ -180,3 +180,4 @@
 - 2025-07-17 21:52:53: perf(memtable): optimize insertion performance
 - 2025-07-18 13:54:49: test(core): add unit tests for memtable
 - 2025-07-18 09:19:25: feat(core): initialize storage engine structure
+- 2025-07-18 11:25:46: feat(skiplist): add initial implementation of memtable
