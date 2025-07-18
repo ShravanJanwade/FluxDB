@@ -177,3 +177,4 @@
 - 2025-07-17 09:23:07: feat(core): initialize storage engine structure
 - 2025-07-17 14:54:29: chore: gitignore update
 - 2025-07-17 19:14:25: feat(query): building AST parser for SQL
+- 2025-07-17 21:52:53: perf(memtable): optimize insertion performance
