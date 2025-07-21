@@ -182,3 +182,4 @@
 - 2025-07-18 09:19:25: feat(core): initialize storage engine structure
 - 2025-07-18 11:25:46: feat(skiplist): add initial implementation of memtable
 - 2025-07-18 16:06:43: fix(api): improve error handling messages
+- 2025-07-21 13:01:20: feat(core): initialize storage engine structure
