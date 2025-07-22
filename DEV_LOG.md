@@ -186,3 +186,4 @@
 - 2025-07-21 17:59:44: feat(server): implement wire protocol v1
 - 2025-07-21 10:13:44: refactor: improve code readability
 - 2025-07-21 18:46:49: fix(electron): allow window resizing
+- 2025-07-22 12:10:55: feat(core): initialize storage engine structure
