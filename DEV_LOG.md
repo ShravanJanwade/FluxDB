@@ -188,3 +188,4 @@
 - 2025-07-21 18:46:49: fix(electron): allow window resizing
 - 2025-07-22 12:10:55: feat(core): initialize storage engine structure
 - 2025-07-22 17:25:32: chore(deps): update rust dependencies
+- 2025-07-25 21:41:34: feat(query-editor): support syntax highlighting for sql
