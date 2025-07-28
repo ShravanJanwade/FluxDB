@@ -189,3 +189,4 @@
 - 2025-07-22 12:10:55: feat(core): initialize storage engine structure
 - 2025-07-22 17:25:32: chore(deps): update rust dependencies
 - 2025-07-25 21:41:34: feat(query-editor): support syntax highlighting for sql
+- 2025-07-28 15:57:04: feat(mvcc): implement multi-version concurrency control
