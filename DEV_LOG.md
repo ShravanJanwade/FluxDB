@@ -192,3 +192,4 @@
 - 2025-07-28 15:57:04: feat(mvcc): implement multi-version concurrency control
 - 2025-07-28 18:04:58: perf(studio): optimize bundle size
 - 2025-07-29 09:59:34: perf(server): perform async io handling
+- 2025-07-29 19:11:35: refactor(server): decouple protocol handler from socket
