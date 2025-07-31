@@ -194,3 +194,4 @@
 - 2025-07-29 09:59:34: perf(server): perform async io handling
 - 2025-07-29 19:11:35: refactor(server): decouple protocol handler from socket
 - 2025-07-30 10:01:14: feat(wal): implement write-ahead logging basic
+- 2025-07-31 17:59:12: feat(mvcc): implement multi-version concurrency control
