@@ -196,3 +196,4 @@
 - 2025-07-30 10:01:14: feat(wal): implement write-ahead logging basic
 - 2025-07-31 17:59:12: feat(mvcc): implement multi-version concurrency control
 - 2025-07-31 15:48:57: feat(api): add health check endpoint
+- 2025-08-01 10:12:14: perf(sstable): optimize block encoding
