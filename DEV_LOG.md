@@ -197,3 +197,4 @@
 - 2025-07-31 17:59:12: feat(mvcc): implement multi-version concurrency control
 - 2025-07-31 15:48:57: feat(api): add health check endpoint
 - 2025-08-01 10:12:14: perf(sstable): optimize block encoding
+- 2025-08-01 13:42:53: fix(connection): validate input fields
