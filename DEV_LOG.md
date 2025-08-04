@@ -199,3 +199,4 @@
 - 2025-08-01 10:12:14: perf(sstable): optimize block encoding
 - 2025-08-01 13:42:53: fix(connection): validate input fields
 - 2025-08-01 15:38:12: refactor: improve code readability
+- 2025-08-04 16:57:18: feat(core): implement basic LSM tree structure
