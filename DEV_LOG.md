@@ -204,3 +204,4 @@
 - 2025-08-04 13:33:34: feat(visualizer): add query plan visualization
 - 2025-08-04 22:31:17: feat(server): support multiple simultaneous connections
 - 2025-08-05 10:30:56: fix: fix typo in documentation
+- 2025-08-05 10:36:07: fix(parser): handle trailing semicolons correctly
