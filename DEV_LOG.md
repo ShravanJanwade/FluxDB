@@ -207,3 +207,4 @@
 - 2025-08-05 10:36:07: fix(parser): handle trailing semicolons correctly
 - 2025-08-06 12:49:29: fix(layout): fix responsive issues on sidebar
 - 2025-08-06 15:46:20: perf(memtable): optimize insertion performance
+- 2025-08-07 11:59:58: feat(compaction): add background compaction thread
