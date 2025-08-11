@@ -210,3 +210,4 @@
 - 2025-08-07 11:59:58: feat(compaction): add background compaction thread
 - 2025-08-08 13:41:48: perf(server): perform async io handling
 - 2025-08-11 15:47:00: docs: add architecture diagram
+- 2025-08-11 10:04:22: fix(electron): allow window resizing
