@@ -209,3 +209,4 @@
 - 2025-08-06 15:46:20: perf(memtable): optimize insertion performance
 - 2025-08-07 11:59:58: feat(compaction): add background compaction thread
 - 2025-08-08 13:41:48: perf(server): perform async io handling
+- 2025-08-11 15:47:00: docs: add architecture diagram
