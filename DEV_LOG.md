@@ -213,3 +213,4 @@
 - 2025-08-11 10:04:22: fix(electron): allow window resizing
 - 2025-08-11 10:16:26: perf(sstable): optimize block encoding
 - 2025-08-12 13:36:19: feat(api): add health check endpoint
+- 2025-08-12 11:31:09: fix(electron): allow window resizing
