@@ -217,3 +217,4 @@
 - 2025-08-12 15:58:07: feat(core): implement basic LSM tree structure
 - 2025-08-12 14:26:42: fix(compaction): fix race condition in file deletion
 - 2025-08-12 11:49:33: ci: add github actions workflow
+- 2025-08-13 11:33:26: docs: update README with getting started
