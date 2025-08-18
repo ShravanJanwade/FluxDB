@@ -220,3 +220,4 @@
 - 2025-08-13 11:33:26: docs: update README with getting started
 - 2025-08-15 12:04:14: feat(core): initialize storage engine structure
 - 2025-08-18 12:27:49: feat(config): add configuration file loading
+- 2025-08-18 19:22:31: chore(deps): update rust dependencies
