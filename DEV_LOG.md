@@ -223,3 +223,4 @@
 - 2025-08-18 19:22:31: chore(deps): update rust dependencies
 - 2025-08-18 20:54:36: fix(mvcc): fix visibility rules for snapshots
 - 2025-08-18 21:24:42: feat(metrics): add prometheus metrics exporter
+- 2025-08-18 11:01:37: perf(sstable): optimize block encoding
