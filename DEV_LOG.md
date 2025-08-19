@@ -224,3 +224,4 @@
 - 2025-08-18 20:54:36: fix(mvcc): fix visibility rules for snapshots
 - 2025-08-18 21:24:42: feat(metrics): add prometheus metrics exporter
 - 2025-08-18 11:01:37: perf(sstable): optimize block encoding
+- 2025-08-19 18:20:14: refactor(hooks): extract useQuery hook
