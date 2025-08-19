@@ -221,3 +221,4 @@
 - 2025-08-15 12:04:14: feat(core): initialize storage engine structure
 - 2025-08-18 12:27:49: feat(config): add configuration file loading
 - 2025-08-18 19:22:31: chore(deps): update rust dependencies
+- 2025-08-18 20:54:36: fix(mvcc): fix visibility rules for snapshots
