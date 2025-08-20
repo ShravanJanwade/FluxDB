@@ -228,3 +228,4 @@
 - 2025-08-19 14:11:37: feat(history): save query history locally
 - 2025-08-20 16:00:24: feat(sstable): implement sstable file format writer
 - 2025-08-20 16:29:30: fix(connection): validate input fields
+- 2025-08-20 14:34:07: fix(server): fix connection leak on timeout
