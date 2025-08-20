@@ -226,3 +226,4 @@
 - 2025-08-18 11:01:37: perf(sstable): optimize block encoding
 - 2025-08-19 18:20:14: refactor(hooks): extract useQuery hook
 - 2025-08-19 14:11:37: feat(history): save query history locally
+- 2025-08-20 16:00:24: feat(sstable): implement sstable file format writer
