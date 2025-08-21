@@ -233,3 +233,4 @@
 - 2025-08-20 13:29:17: feat(query): support basic SELECT statements
 - 2025-08-21 10:03:13: feat(query-editor): support syntax highlighting for sql
 - 2025-08-21 11:42:41: chore(deps): update rust dependencies
+- 2025-08-21 16:13:40: ci: add github actions workflow
