@@ -231,3 +231,4 @@
 - 2025-08-20 14:34:07: fix(server): fix connection leak on timeout
 - 2025-08-20 20:49:25: test(core): add unit tests for memtable
 - 2025-08-20 13:29:17: feat(query): support basic SELECT statements
+- 2025-08-21 10:03:13: feat(query-editor): support syntax highlighting for sql
