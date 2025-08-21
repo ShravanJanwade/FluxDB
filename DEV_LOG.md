@@ -229,3 +229,4 @@
 - 2025-08-20 16:00:24: feat(sstable): implement sstable file format writer
 - 2025-08-20 16:29:30: fix(connection): validate input fields
 - 2025-08-20 14:34:07: fix(server): fix connection leak on timeout
+- 2025-08-20 20:49:25: test(core): add unit tests for memtable
