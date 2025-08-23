@@ -234,3 +234,4 @@
 - 2025-08-21 10:03:13: feat(query-editor): support syntax highlighting for sql
 - 2025-08-21 11:42:41: chore(deps): update rust dependencies
 - 2025-08-21 16:13:40: ci: add github actions workflow
+- 2025-08-23 10:12:32: fix(wal): correct log rotation logic
