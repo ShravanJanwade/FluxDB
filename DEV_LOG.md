@@ -237,3 +237,4 @@
 - 2025-08-23 10:12:32: fix(wal): correct log rotation logic
 - 2025-08-23 12:33:45: feat(compaction): add background compaction thread
 - 2025-08-24 09:02:18: feat(api): add health check endpoint
+- 2025-08-25 09:56:53: refactor(server): decouple protocol handler from socket
