@@ -239,3 +239,4 @@
 - 2025-08-24 09:02:18: feat(api): add health check endpoint
 - 2025-08-25 09:56:53: refactor(server): decouple protocol handler from socket
 - 2025-08-26 12:18:32: refactor(core): cleanup module structure
+- 2025-08-26 10:24:56: feat(studio): initialize electron project
