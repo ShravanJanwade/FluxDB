@@ -241,3 +241,4 @@
 - 2025-08-26 12:18:32: refactor(core): cleanup module structure
 - 2025-08-26 10:24:56: feat(studio): initialize electron project
 - 2025-08-26 16:32:12: feat(dashboard): create main layout structure
+- 2025-08-26 11:49:53: feat(server): implement wire protocol v1
