@@ -244,3 +244,4 @@
 - 2025-08-26 11:49:53: feat(server): implement wire protocol v1
 - 2025-08-27 16:31:11: feat(compaction): add background compaction thread
 - 2025-08-27 10:00:25: feat(metrics): add prometheus metrics exporter
+- 2025-08-27 10:41:42: feat(auth): implement basic basic auth
