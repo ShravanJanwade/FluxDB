@@ -245,3 +245,4 @@
 - 2025-08-27 16:31:11: feat(compaction): add background compaction thread
 - 2025-08-27 10:00:25: feat(metrics): add prometheus metrics exporter
 - 2025-08-27 10:41:42: feat(auth): implement basic basic auth
+- 2025-08-28 15:41:39: fix(layout): fix responsive issues on sidebar
