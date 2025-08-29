@@ -247,3 +247,4 @@
 - 2025-08-27 10:41:42: feat(auth): implement basic basic auth
 - 2025-08-28 15:41:39: fix(layout): fix responsive issues on sidebar
 - 2025-08-28 10:08:07: feat(executor): implement scanning of tables
+- 2025-08-28 20:13:00: chore(cargo): optimize build profile
