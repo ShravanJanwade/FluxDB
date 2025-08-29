@@ -249,3 +249,4 @@
 - 2025-08-28 10:08:07: feat(executor): implement scanning of tables
 - 2025-08-28 20:13:00: chore(cargo): optimize build profile
 - 2025-08-29 21:30:18: refactor(hooks): extract useQuery hook
+- 2025-08-29 14:30:15: perf(executor): add index scan support
