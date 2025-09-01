@@ -252,3 +252,4 @@
 - 2025-08-29 14:30:15: perf(executor): add index scan support
 - 2025-08-31 20:25:06: feat(auth): implement basic basic auth
 - 2025-08-31 18:49:33: perf(sstable): optimize block encoding
+- 2025-09-01 15:11:40: fix(connection): validate input fields
