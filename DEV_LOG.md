@@ -253,3 +253,4 @@
 - 2025-08-31 20:25:06: feat(auth): implement basic basic auth
 - 2025-08-31 18:49:33: perf(sstable): optimize block encoding
 - 2025-09-01 15:11:40: fix(connection): validate input fields
+- 2025-09-02 13:29:33: feat(server): support multiple simultaneous connections
