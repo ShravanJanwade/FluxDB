@@ -255,3 +255,4 @@
 - 2025-09-01 15:11:40: fix(connection): validate input fields
 - 2025-09-02 13:29:33: feat(server): support multiple simultaneous connections
 - 2025-09-03 16:59:37: chore(logging): switch to tracing crate
+- 2025-09-04 18:50:44: feat(settings): add user preferences page
