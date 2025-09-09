@@ -258,3 +258,4 @@
 - 2025-09-04 18:50:44: feat(settings): add user preferences page
 - 2025-09-08 18:10:09: feat(query): support INSERT statements
 - 2025-09-08 10:52:51: feat(query): support INSERT statements
+- 2025-09-09 14:33:08: fix(connection): validate input fields
