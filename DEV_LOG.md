@@ -259,3 +259,4 @@
 - 2025-09-08 18:10:09: feat(query): support INSERT statements
 - 2025-09-08 10:52:51: feat(query): support INSERT statements
 - 2025-09-09 14:33:08: fix(connection): validate input fields
+- 2025-09-10 18:13:32: fix(table): fix column width calculation
