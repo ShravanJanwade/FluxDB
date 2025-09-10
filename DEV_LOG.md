@@ -260,3 +260,4 @@
 - 2025-09-08 10:52:51: feat(query): support INSERT statements
 - 2025-09-09 14:33:08: fix(connection): validate input fields
 - 2025-09-10 18:13:32: fix(table): fix column width calculation
+- 2025-09-10 14:51:00: feat(compaction): add background compaction thread
