@@ -264,3 +264,4 @@
 - 2025-09-10 18:14:44: feat(query): support INSERT statements
 - 2025-09-11 16:14:36: feat(api): add health check endpoint
 - 2025-09-12 16:23:53: fix(mvcc): fix visibility rules for snapshots
+- 2025-09-12 19:00:39: test: fix flaky tests
