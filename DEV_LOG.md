@@ -266,3 +266,4 @@
 - 2025-09-12 16:23:53: fix(mvcc): fix visibility rules for snapshots
 - 2025-09-12 19:00:39: test: fix flaky tests
 - 2025-09-15 13:13:16: feat(connection): add database connection modal
+- 2025-09-15 15:23:37: feat(auth): implement basic basic auth
