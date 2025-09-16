@@ -268,3 +268,4 @@
 - 2025-09-15 13:13:16: feat(connection): add database connection modal
 - 2025-09-15 15:23:37: feat(auth): implement basic basic auth
 - 2025-09-15 17:34:16: feat(txn): add basic transaction manager
+- 2025-09-16 11:57:54: docs: update API reference
