@@ -270,3 +270,4 @@
 - 2025-09-15 17:34:16: feat(txn): add basic transaction manager
 - 2025-09-16 11:57:54: docs: update API reference
 - 2025-09-17 17:28:29: fix: fix typo in documentation
+- 2025-09-17 11:35:20: ci: add github actions workflow
