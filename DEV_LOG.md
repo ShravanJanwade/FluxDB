@@ -272,3 +272,4 @@
 - 2025-09-17 17:28:29: fix: fix typo in documentation
 - 2025-09-17 11:35:20: ci: add github actions workflow
 - 2025-09-18 11:31:01: style(ui): update color theme to dark mode
+- 2025-09-18 16:31:10: feat(server): implement wire protocol v1
