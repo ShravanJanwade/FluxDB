@@ -275,3 +275,4 @@
 - 2025-09-18 16:31:10: feat(server): implement wire protocol v1
 - 2025-09-18 21:38:56: feat(api): add health check endpoint
 - 2025-09-18 12:14:40: feat(sidebar): add table explorer tree view
+- 2025-09-19 13:29:43: refactor(core): cleanup module structure
