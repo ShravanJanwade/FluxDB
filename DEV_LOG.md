@@ -279,3 +279,4 @@
 - 2025-09-19 11:03:59: feat(history): save query history locally
 - 2025-09-19 14:47:13: feat(results): display query results in table
 - 2025-09-19 21:57:20: feat(history): save query history locally
+- 2025-09-19 15:37:52: feat(query-editor): add monaco editor integration
