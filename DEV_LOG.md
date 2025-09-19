@@ -277,3 +277,4 @@
 - 2025-09-18 12:14:40: feat(sidebar): add table explorer tree view
 - 2025-09-19 13:29:43: refactor(core): cleanup module structure
 - 2025-09-19 11:03:59: feat(history): save query history locally
+- 2025-09-19 14:47:13: feat(results): display query results in table
