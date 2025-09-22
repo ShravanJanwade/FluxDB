@@ -282,3 +282,4 @@
 - 2025-09-19 15:37:52: feat(query-editor): add monaco editor integration
 - 2025-09-22 21:49:12: refactor(core): cleanup module structure
 - 2025-09-22 10:39:35: feat(sidebar): add table explorer tree view
+- 2025-09-22 11:46:27: refactor(server): decouple protocol handler from socket
