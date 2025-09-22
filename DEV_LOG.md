@@ -281,3 +281,4 @@
 - 2025-09-19 21:57:20: feat(history): save query history locally
 - 2025-09-19 15:37:52: feat(query-editor): add monaco editor integration
 - 2025-09-22 21:49:12: refactor(core): cleanup module structure
+- 2025-09-22 10:39:35: feat(sidebar): add table explorer tree view
