@@ -284,3 +284,4 @@
 - 2025-09-22 10:39:35: feat(sidebar): add table explorer tree view
 - 2025-09-22 11:46:27: refactor(server): decouple protocol handler from socket
 - 2025-09-22 11:17:24: feat(config): add configuration file loading
+- 2025-09-23 16:28:10: feat(core): implement basic LSM tree structure
