@@ -286,3 +286,4 @@
 - 2025-09-22 11:17:24: feat(config): add configuration file loading
 - 2025-09-23 16:28:10: feat(core): implement basic LSM tree structure
 - 2025-09-23 13:43:59: fix(server): fix connection leak on timeout
+- 2025-09-23 10:11:54: feat(sstable): add bloom filter for fast lookups
