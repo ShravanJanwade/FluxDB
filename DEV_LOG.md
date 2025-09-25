@@ -290,3 +290,4 @@
 - 2025-09-25 09:45:13: feat(txn): add basic transaction manager
 - 2025-09-25 12:37:45: refactor: improve code readability
 - 2025-09-25 11:56:57: feat(executor): implement scanning of tables
+- 2025-09-25 13:45:32: fix: fix typo in documentation
