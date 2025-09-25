@@ -288,3 +288,4 @@
 - 2025-09-23 13:43:59: fix(server): fix connection leak on timeout
 - 2025-09-23 10:11:54: feat(sstable): add bloom filter for fast lookups
 - 2025-09-25 09:45:13: feat(txn): add basic transaction manager
+- 2025-09-25 12:37:45: refactor: improve code readability
