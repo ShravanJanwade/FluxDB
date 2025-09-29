@@ -292,3 +292,4 @@
 - 2025-09-25 11:56:57: feat(executor): implement scanning of tables
 - 2025-09-25 13:45:32: fix: fix typo in documentation
 - 2025-09-26 19:56:02: feat(components): add button and input components
+- 2025-09-29 11:39:05: feat(skiplist): add initial implementation of memtable
