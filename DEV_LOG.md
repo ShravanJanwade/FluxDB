@@ -293,3 +293,4 @@
 - 2025-09-25 13:45:32: fix: fix typo in documentation
 - 2025-09-26 19:56:02: feat(components): add button and input components
 - 2025-09-29 11:39:05: feat(skiplist): add initial implementation of memtable
+- 2025-09-30 15:50:06: feat(config): add configuration file loading
