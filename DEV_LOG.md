@@ -294,3 +294,4 @@
 - 2025-09-26 19:56:02: feat(components): add button and input components
 - 2025-09-29 11:39:05: feat(skiplist): add initial implementation of memtable
 - 2025-09-30 15:50:06: feat(config): add configuration file loading
+- 2025-09-30 17:54:19: feat(sidebar): add table explorer tree view
