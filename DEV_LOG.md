@@ -298,3 +298,4 @@
 - 2025-10-01 09:08:52: perf(sstable): optimize block encoding
 - 2025-10-03 21:28:40: style(ui): update color theme to dark mode
 - 2025-10-03 10:55:03: chore(cargo): optimize build profile
+- 2025-10-03 19:17:38: feat(query): building AST parser for SQL
