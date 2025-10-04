@@ -296,3 +296,4 @@
 - 2025-09-30 15:50:06: feat(config): add configuration file loading
 - 2025-09-30 17:54:19: feat(sidebar): add table explorer tree view
 - 2025-10-01 09:08:52: perf(sstable): optimize block encoding
+- 2025-10-03 21:28:40: style(ui): update color theme to dark mode
