@@ -299,3 +299,4 @@
 - 2025-10-03 21:28:40: style(ui): update color theme to dark mode
 - 2025-10-03 10:55:03: chore(cargo): optimize build profile
 - 2025-10-03 19:17:38: feat(query): building AST parser for SQL
+- 2025-10-06 20:51:28: fix(table): fix column width calculation
