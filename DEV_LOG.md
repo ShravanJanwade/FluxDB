@@ -301,3 +301,4 @@
 - 2025-10-03 19:17:38: feat(query): building AST parser for SQL
 - 2025-10-06 20:51:28: fix(table): fix column width calculation
 - 2025-10-07 10:12:33: docs: add architecture diagram
+- 2025-10-07 09:30:19: feat(server): implement wire protocol v1
