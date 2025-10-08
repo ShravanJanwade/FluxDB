@@ -303,3 +303,4 @@
 - 2025-10-07 10:12:33: docs: add architecture diagram
 - 2025-10-07 09:30:19: feat(server): implement wire protocol v1
 - 2025-10-08 18:44:46: fix(layout): fix responsive issues on sidebar
+- 2025-10-08 18:09:54: fix(table): fix column width calculation
