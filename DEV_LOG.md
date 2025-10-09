@@ -306,3 +306,4 @@
 - 2025-10-08 18:09:54: fix(table): fix column width calculation
 - 2025-10-08 14:33:56: fix(mvcc): fix visibility rules for snapshots
 - 2025-10-08 11:39:36: docs: update README with getting started
+- 2025-10-09 19:25:46: feat(query): building AST parser for SQL
