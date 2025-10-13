@@ -310,3 +310,4 @@
 - 2025-10-09 16:10:12: refactor(server): decouple protocol handler from socket
 - 2025-10-10 12:29:59: feat(sstable): implement sstable file format writer
 - 2025-10-13 11:04:10: chore: cleanup unused files
+- 2025-10-13 16:58:41: feat(ui): setup react and tailwindcss
