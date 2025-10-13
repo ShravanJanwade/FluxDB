@@ -311,3 +311,4 @@
 - 2025-10-10 12:29:59: feat(sstable): implement sstable file format writer
 - 2025-10-13 11:04:10: chore: cleanup unused files
 - 2025-10-13 16:58:41: feat(ui): setup react and tailwindcss
+- 2025-10-13 15:40:46: feat(api): add health check endpoint
