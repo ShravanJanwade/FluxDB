@@ -312,3 +312,4 @@
 - 2025-10-13 11:04:10: chore: cleanup unused files
 - 2025-10-13 16:58:41: feat(ui): setup react and tailwindcss
 - 2025-10-13 15:40:46: feat(api): add health check endpoint
+- 2025-10-13 11:28:21: fix(table): fix column width calculation
