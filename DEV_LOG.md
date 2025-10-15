@@ -316,3 +316,4 @@
 - 2025-10-14 19:15:52: feat(mvcc): implement multi-version concurrency control
 - 2025-10-14 11:06:44: test(core): add integration tests for storage engine
 - 2025-10-15 10:20:04: refactor(hooks): extract useQuery hook
+- 2025-10-15 10:34:37: fix(compaction): fix race condition in file deletion
