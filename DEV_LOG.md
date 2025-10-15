@@ -315,3 +315,4 @@
 - 2025-10-13 11:28:21: fix(table): fix column width calculation
 - 2025-10-14 19:15:52: feat(mvcc): implement multi-version concurrency control
 - 2025-10-14 11:06:44: test(core): add integration tests for storage engine
+- 2025-10-15 10:20:04: refactor(hooks): extract useQuery hook
