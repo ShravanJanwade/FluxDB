@@ -319,3 +319,4 @@
 - 2025-10-15 10:34:37: fix(compaction): fix race condition in file deletion
 - 2025-10-15 11:40:08: feat(server): setup basic tcp listener
 - 2025-10-16 16:11:46: feat(studio): initialize electron project
+- 2025-10-16 18:56:43: feat(visualizer): add query plan visualization
