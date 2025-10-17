@@ -322,3 +322,4 @@
 - 2025-10-16 18:56:43: feat(visualizer): add query plan visualization
 - 2025-10-17 23:46:24: feat(studio): initialize electron project
 - 2025-10-17 12:54:53: perf(sstable): optimize block encoding
+- 2025-10-17 09:17:47: test(core): add unit tests for memtable
