@@ -324,3 +324,4 @@
 - 2025-10-17 12:54:53: perf(sstable): optimize block encoding
 - 2025-10-17 09:17:47: test(core): add unit tests for memtable
 - 2025-10-19 16:19:33: perf(studio): optimize bundle size
+- 2025-10-19 15:39:45: feat(server): setup basic tcp listener
