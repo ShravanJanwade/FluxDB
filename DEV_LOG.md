@@ -327,3 +327,4 @@
 - 2025-10-19 15:39:45: feat(server): setup basic tcp listener
 - 2025-10-20 11:39:09: fix: fix typo in documentation
 - 2025-10-21 12:04:54: feat(api): add health check endpoint
+- 2025-10-21 10:24:03: perf(server): perform async io handling
