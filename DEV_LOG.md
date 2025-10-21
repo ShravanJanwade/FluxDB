@@ -326,3 +326,4 @@
 - 2025-10-19 16:19:33: perf(studio): optimize bundle size
 - 2025-10-19 15:39:45: feat(server): setup basic tcp listener
 - 2025-10-20 11:39:09: fix: fix typo in documentation
+- 2025-10-21 12:04:54: feat(api): add health check endpoint
