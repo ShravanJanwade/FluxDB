@@ -329,3 +329,4 @@
 - 2025-10-21 12:04:54: feat(api): add health check endpoint
 - 2025-10-21 10:24:03: perf(server): perform async io handling
 - 2025-10-22 09:59:23: refactor: improve code readability
+- 2025-10-23 12:12:41: feat(auth): implement basic basic auth
