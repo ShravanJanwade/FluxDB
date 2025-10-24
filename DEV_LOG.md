@@ -332,3 +332,4 @@
 - 2025-10-23 12:12:41: feat(auth): implement basic basic auth
 - 2025-10-24 11:48:57: feat(api): add health check endpoint
 - 2025-10-24 10:29:38: feat(compaction): add background compaction thread
+- 2025-10-24 18:52:26: feat(ui): setup react and tailwindcss
