@@ -336,3 +336,4 @@
 - 2025-10-24 12:49:51: fix(compaction): fix race condition in file deletion
 - 2025-10-24 09:21:31: style(ui): update color theme to dark mode
 - 2025-10-27 09:05:00: feat(config): add configuration file loading
+- 2025-10-27 16:13:10: fix(server): fix connection leak on timeout
