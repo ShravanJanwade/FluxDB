@@ -335,3 +335,4 @@
 - 2025-10-24 18:52:26: feat(ui): setup react and tailwindcss
 - 2025-10-24 12:49:51: fix(compaction): fix race condition in file deletion
 - 2025-10-24 09:21:31: style(ui): update color theme to dark mode
+- 2025-10-27 09:05:00: feat(config): add configuration file loading
