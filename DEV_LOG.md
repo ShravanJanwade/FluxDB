@@ -337,3 +337,4 @@
 - 2025-10-24 09:21:31: style(ui): update color theme to dark mode
 - 2025-10-27 09:05:00: feat(config): add configuration file loading
 - 2025-10-27 16:13:10: fix(server): fix connection leak on timeout
+- 2025-10-28 15:09:21: feat(api): add health check endpoint
