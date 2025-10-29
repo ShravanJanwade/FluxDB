@@ -340,3 +340,4 @@
 - 2025-10-28 15:09:21: feat(api): add health check endpoint
 - 2025-10-28 18:35:28: refactor: improve code readability
 - 2025-10-29 15:07:51: refactor(core): cleanup module structure
+- 2025-10-29 15:17:18: feat(mvcc): implement multi-version concurrency control
