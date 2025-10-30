@@ -342,3 +342,4 @@
 - 2025-10-29 15:07:51: refactor(core): cleanup module structure
 - 2025-10-29 15:17:18: feat(mvcc): implement multi-version concurrency control
 - 2025-10-30 14:14:17: fix(table): fix column width calculation
+- 2025-10-30 16:00:53: ci: add github actions workflow
