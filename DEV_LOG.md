@@ -346,3 +346,4 @@
 - 2025-10-30 16:50:27: fix(layout): fix responsive issues on sidebar
 - 2025-10-31 10:10:48: style(ui): update color theme to dark mode
 - 2025-10-31 20:39:28: refactor(server): decouple protocol handler from socket
+- 2025-10-31 15:35:04: feat(sidebar): add table explorer tree view
