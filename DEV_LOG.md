@@ -352,3 +352,4 @@
 - 2025-11-03 18:39:42: refactor: improve code readability
 - 2025-11-03 16:17:03: feat(compaction): add background compaction thread
 - 2025-11-04 21:19:11: feat(query): support INSERT statements
+- 2025-11-04 15:43:19: chore(deps): update npm packages
