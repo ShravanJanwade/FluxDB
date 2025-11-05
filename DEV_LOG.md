@@ -353,3 +353,4 @@
 - 2025-11-03 16:17:03: feat(compaction): add background compaction thread
 - 2025-11-04 21:19:11: feat(query): support INSERT statements
 - 2025-11-04 15:43:19: chore(deps): update npm packages
+- 2025-11-05 14:42:38: feat(sidebar): add table explorer tree view
