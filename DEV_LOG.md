@@ -351,3 +351,4 @@
 - 2025-11-02 14:10:25: refactor(hooks): extract useQuery hook
 - 2025-11-03 18:39:42: refactor: improve code readability
 - 2025-11-03 16:17:03: feat(compaction): add background compaction thread
+- 2025-11-04 21:19:11: feat(query): support INSERT statements
