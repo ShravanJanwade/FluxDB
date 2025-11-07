@@ -354,3 +354,4 @@
 - 2025-11-04 21:19:11: feat(query): support INSERT statements
 - 2025-11-04 15:43:19: chore(deps): update npm packages
 - 2025-11-05 14:42:38: feat(sidebar): add table explorer tree view
+- 2025-11-06 22:24:34: fix(index): handle node splitting correctly
