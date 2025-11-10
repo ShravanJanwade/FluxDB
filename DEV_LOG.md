@@ -357,3 +357,4 @@
 - 2025-11-06 22:24:34: fix(index): handle node splitting correctly
 - 2025-11-06 22:25:23: fix(compaction): fix race condition in file deletion
 - 2025-11-07 17:49:48: fix(electron): allow window resizing
+- 2025-11-10 10:41:01: feat(index): implement B-Tree index support
