@@ -359,3 +359,4 @@
 - 2025-11-07 17:49:48: fix(electron): allow window resizing
 - 2025-11-10 10:41:01: feat(index): implement B-Tree index support
 - 2025-11-10 11:08:16: feat(sidebar): add table explorer tree view
+- 2025-11-11 09:34:28: feat(components): add button and input components
