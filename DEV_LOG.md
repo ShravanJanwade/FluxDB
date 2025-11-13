@@ -365,3 +365,4 @@
 - 2025-11-12 11:08:19: feat(query): building AST parser for SQL
 - 2025-11-13 14:55:19: feat(skiplist): add initial implementation of memtable
 - 2025-11-13 10:34:26: feat(query-editor): add monaco editor integration
+- 2025-11-13 15:17:31: feat(index): implement B-Tree index support
