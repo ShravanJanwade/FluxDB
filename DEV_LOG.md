@@ -363,3 +363,4 @@
 - 2025-11-11 22:13:32: feat(auth): implement basic basic auth
 - 2025-11-11 22:42:28: feat(connection): add database connection modal
 - 2025-11-12 11:08:19: feat(query): building AST parser for SQL
+- 2025-11-13 14:55:19: feat(skiplist): add initial implementation of memtable
