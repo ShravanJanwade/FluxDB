@@ -368,3 +368,4 @@
 - 2025-11-13 15:17:31: feat(index): implement B-Tree index support
 - 2025-11-14 14:47:45: feat(results): display query results in table
 - 2025-11-14 09:30:18: refactor(core): cleanup module structure
+- 2025-11-14 17:45:31: feat(mvcc): implement multi-version concurrency control
