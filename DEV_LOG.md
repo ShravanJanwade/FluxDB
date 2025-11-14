@@ -367,3 +367,4 @@
 - 2025-11-13 10:34:26: feat(query-editor): add monaco editor integration
 - 2025-11-13 15:17:31: feat(index): implement B-Tree index support
 - 2025-11-14 14:47:45: feat(results): display query results in table
+- 2025-11-14 09:30:18: refactor(core): cleanup module structure
