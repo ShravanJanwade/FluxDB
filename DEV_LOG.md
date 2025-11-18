@@ -371,3 +371,4 @@
 - 2025-11-14 17:45:31: feat(mvcc): implement multi-version concurrency control
 - 2025-11-17 16:25:00: refactor(server): decouple protocol handler from socket
 - 2025-11-17 15:41:09: fix(skiplist): fix pointer manipulation in insert
+- 2025-11-18 16:04:52: style(ui): update color theme to dark mode
