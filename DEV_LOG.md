@@ -373,3 +373,4 @@
 - 2025-11-17 15:41:09: fix(skiplist): fix pointer manipulation in insert
 - 2025-11-18 16:04:52: style(ui): update color theme to dark mode
 - 2025-11-18 16:19:15: fix(server): fix connection leak on timeout
+- 2025-11-19 21:20:48: feat(visualizer): add query plan visualization
