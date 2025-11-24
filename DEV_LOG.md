@@ -376,3 +376,4 @@
 - 2025-11-19 21:20:48: feat(visualizer): add query plan visualization
 - 2025-11-20 21:52:41: feat(txn): add basic transaction manager
 - 2025-11-20 15:39:30: docs: update README with getting started
+- 2025-11-24 12:55:33: fix(electron): allow window resizing
