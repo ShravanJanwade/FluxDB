@@ -381,3 +381,4 @@
 - 2025-11-25 09:46:38: feat(server): support multiple simultaneous connections
 - 2025-11-26 19:37:18: feat(settings): add user preferences page
 - 2025-11-27 21:29:03: feat(skiplist): add initial implementation of memtable
+- 2025-11-27 10:36:58: feat(metrics): add prometheus metrics exporter
