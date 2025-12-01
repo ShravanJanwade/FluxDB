@@ -384,3 +384,4 @@
 - 2025-11-27 10:36:58: feat(metrics): add prometheus metrics exporter
 - 2025-11-28 16:09:12: perf(server): perform async io handling
 - 2025-11-28 12:41:15: fix(compaction): fix race condition in file deletion
+- 2025-12-01 09:56:33: feat(server): support multiple simultaneous connections
