@@ -385,3 +385,4 @@
 - 2025-11-28 16:09:12: perf(server): perform async io handling
 - 2025-11-28 12:41:15: fix(compaction): fix race condition in file deletion
 - 2025-12-01 09:56:33: feat(server): support multiple simultaneous connections
+- 2025-12-01 14:07:00: chore(logging): switch to tracing crate
