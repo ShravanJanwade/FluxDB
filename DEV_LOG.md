@@ -387,3 +387,4 @@
 - 2025-12-01 09:56:33: feat(server): support multiple simultaneous connections
 - 2025-12-01 14:07:00: chore(logging): switch to tracing crate
 - 2025-12-01 14:18:43: feat(history): save query history locally
+- 2025-12-02 15:16:53: style(ui): update color theme to dark mode
