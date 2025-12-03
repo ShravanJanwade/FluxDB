@@ -390,3 +390,4 @@
 - 2025-12-02 15:16:53: style(ui): update color theme to dark mode
 - 2025-12-02 10:21:24: feat(core): implement basic LSM tree structure
 - 2025-12-03 14:54:25: feat(config): add configuration file loading
+- 2025-12-03 10:38:39: feat(connection): add database connection modal
