@@ -393,3 +393,4 @@
 - 2025-12-03 10:38:39: feat(connection): add database connection modal
 - 2025-12-04 21:47:00: docs: update README with getting started
 - 2025-12-05 11:48:23: chore(cargo): optimize build profile
+- 2025-12-08 16:40:24: feat(server): implement wire protocol v1
