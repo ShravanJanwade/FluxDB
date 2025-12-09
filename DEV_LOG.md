@@ -395,3 +395,4 @@
 - 2025-12-05 11:48:23: chore(cargo): optimize build profile
 - 2025-12-08 16:40:24: feat(server): implement wire protocol v1
 - 2025-12-08 18:28:49: fix(parser): handle trailing semicolons correctly
+- 2025-12-09 12:33:58: feat(ui): setup react and tailwindcss
