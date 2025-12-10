@@ -397,3 +397,4 @@
 - 2025-12-08 18:28:49: fix(parser): handle trailing semicolons correctly
 - 2025-12-09 12:33:58: feat(ui): setup react and tailwindcss
 - 2025-12-09 14:47:09: perf(sstable): optimize block encoding
+- 2025-12-10 15:37:44: feat(history): save query history locally
