@@ -399,3 +399,4 @@
 - 2025-12-09 14:47:09: perf(sstable): optimize block encoding
 - 2025-12-10 15:37:44: feat(history): save query history locally
 - 2025-12-10 16:00:46: feat(ui): setup react and tailwindcss
+- 2025-12-10 12:22:17: docs: add architecture diagram
