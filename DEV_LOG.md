@@ -401,3 +401,4 @@
 - 2025-12-10 16:00:46: feat(ui): setup react and tailwindcss
 - 2025-12-10 12:22:17: docs: add architecture diagram
 - 2025-12-11 18:40:47: feat(mvcc): implement multi-version concurrency control
+- 2025-12-11 13:55:01: feat(query-editor): add monaco editor integration
