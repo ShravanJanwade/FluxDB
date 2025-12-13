@@ -402,3 +402,4 @@
 - 2025-12-10 12:22:17: docs: add architecture diagram
 - 2025-12-11 18:40:47: feat(mvcc): implement multi-version concurrency control
 - 2025-12-11 13:55:01: feat(query-editor): add monaco editor integration
+- 2025-12-12 19:25:31: docs: update API reference
