@@ -404,3 +404,4 @@
 - 2025-12-11 13:55:01: feat(query-editor): add monaco editor integration
 - 2025-12-12 19:25:31: docs: update API reference
 - 2025-12-12 14:27:01: refactor(hooks): extract useQuery hook
+- 2025-12-15 16:13:01: feat(results): display query results in table
