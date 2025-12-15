@@ -406,3 +406,4 @@
 - 2025-12-12 14:27:01: refactor(hooks): extract useQuery hook
 - 2025-12-15 16:13:01: feat(results): display query results in table
 - 2025-12-15 17:56:33: feat(components): add button and input components
+- 2025-12-15 11:44:56: feat(mvcc): implement multi-version concurrency control
