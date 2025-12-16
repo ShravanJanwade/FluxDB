@@ -407,3 +407,4 @@
 - 2025-12-15 16:13:01: feat(results): display query results in table
 - 2025-12-15 17:56:33: feat(components): add button and input components
 - 2025-12-15 11:44:56: feat(mvcc): implement multi-version concurrency control
+- 2025-12-16 17:11:49: test(core): add integration tests for storage engine
