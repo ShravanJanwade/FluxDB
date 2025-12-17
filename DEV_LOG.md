@@ -412,3 +412,4 @@
 - 2025-12-16 10:55:12: refactor: improve code readability
 - 2025-12-17 15:36:05: feat(metrics): add prometheus metrics exporter
 - 2025-12-17 15:01:14: chore(logging): switch to tracing crate
+- 2025-12-17 10:08:08: docs: update README with getting started
