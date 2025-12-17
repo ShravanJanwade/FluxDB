@@ -410,3 +410,4 @@
 - 2025-12-16 17:11:49: test(core): add integration tests for storage engine
 - 2025-12-16 16:33:46: style(ui): update color theme to dark mode
 - 2025-12-16 10:55:12: refactor: improve code readability
+- 2025-12-17 15:36:05: feat(metrics): add prometheus metrics exporter
