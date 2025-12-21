@@ -416,3 +416,4 @@
 - 2025-12-17 20:21:34: feat(metrics): add prometheus metrics exporter
 - 2025-12-18 13:09:58: feat(sstable): implement sstable file format writer
 - 2025-12-21 16:55:30: fix(wal): correct log rotation logic
+- 2025-12-21 14:06:01: refactor(hooks): extract useQuery hook
