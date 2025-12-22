@@ -418,3 +418,4 @@
 - 2025-12-21 16:55:30: fix(wal): correct log rotation logic
 - 2025-12-21 14:06:01: refactor(hooks): extract useQuery hook
 - 2025-12-21 10:44:34: perf(sstable): optimize block encoding
+- 2025-12-22 17:34:17: test: fix flaky tests
