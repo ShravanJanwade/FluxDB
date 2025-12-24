@@ -421,3 +421,4 @@
 - 2025-12-22 17:34:17: test: fix flaky tests
 - 2025-12-23 17:57:49: fix(wal): correct log rotation logic
 - 2025-12-23 20:54:53: fix(connection): validate input fields
+- 2025-12-24 16:56:41: refactor(server): decouple protocol handler from socket
