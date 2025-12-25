@@ -422,3 +422,4 @@
 - 2025-12-23 17:57:49: fix(wal): correct log rotation logic
 - 2025-12-23 20:54:53: fix(connection): validate input fields
 - 2025-12-24 16:56:41: refactor(server): decouple protocol handler from socket
+- 2025-12-25 10:17:45: docs: update API reference
