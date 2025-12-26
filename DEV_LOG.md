@@ -423,3 +423,4 @@
 - 2025-12-23 20:54:53: fix(connection): validate input fields
 - 2025-12-24 16:56:41: refactor(server): decouple protocol handler from socket
 - 2025-12-25 10:17:45: docs: update API reference
+- 2025-12-25 20:24:25: perf(sstable): optimize block encoding
