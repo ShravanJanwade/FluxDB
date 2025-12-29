@@ -426,3 +426,4 @@
 - 2025-12-25 20:24:25: perf(sstable): optimize block encoding
 - 2025-12-26 16:13:45: docs: update API reference
 - 2025-12-26 11:11:23: fix(compaction): fix race condition in file deletion
+- 2025-12-29 14:39:38: fix(compaction): fix race condition in file deletion
