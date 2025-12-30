@@ -429,3 +429,4 @@
 - 2025-12-29 14:39:38: fix(compaction): fix race condition in file deletion
 - 2025-12-30 14:27:14: feat(metrics): add prometheus metrics exporter
 - 2025-12-30 13:31:33: feat(sidebar): add table explorer tree view
+- 2025-12-30 10:03:07: feat(settings): add user preferences page
