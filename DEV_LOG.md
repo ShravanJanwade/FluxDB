@@ -427,3 +427,4 @@
 - 2025-12-26 16:13:45: docs: update API reference
 - 2025-12-26 11:11:23: fix(compaction): fix race condition in file deletion
 - 2025-12-29 14:39:38: fix(compaction): fix race condition in file deletion
+- 2025-12-30 14:27:14: feat(metrics): add prometheus metrics exporter
