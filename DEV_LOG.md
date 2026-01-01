@@ -432,3 +432,4 @@
 - 2025-12-30 10:03:07: feat(settings): add user preferences page
 - 2025-12-30 14:05:48: feat(settings): add user preferences page
 - 2026-01-01 10:15:38: feat(server): setup basic tcp listener
+- 2026-01-01 13:35:28: ci: add github actions workflow
