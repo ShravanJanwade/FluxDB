@@ -437,3 +437,4 @@
 - 2026-01-02 16:32:28: chore(deps): update npm packages
 - 2026-01-02 14:12:07: refactor(hooks): extract useQuery hook
 - 2026-01-05 17:06:54: ci: add github actions workflow
+- 2026-01-06 16:38:21: refactor: improve code readability
