@@ -443,3 +443,4 @@
 - 2026-01-06 12:49:13: feat(mvcc): implement multi-version concurrency control
 - 2026-01-06 21:38:36: test(core): add integration tests for storage engine
 - 2026-01-07 10:05:15: feat(query): building AST parser for SQL
+- 2026-01-07 13:48:38: feat(query): building AST parser for SQL
