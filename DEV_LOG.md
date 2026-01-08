@@ -445,3 +445,4 @@
 - 2026-01-07 10:05:15: feat(query): building AST parser for SQL
 - 2026-01-07 13:48:38: feat(query): building AST parser for SQL
 - 2026-01-07 22:12:52: fix(table): fix column width calculation
+- 2026-01-08 17:30:00: docs: update README with getting started
