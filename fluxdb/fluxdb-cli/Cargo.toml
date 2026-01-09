@@ -1,0 +1,12 @@
+[package]
+name = "fluxdb-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+tokio.workspace = true
+anyhow.workspace = true
+fluxdb-core = { path = "../fluxdb-core" }

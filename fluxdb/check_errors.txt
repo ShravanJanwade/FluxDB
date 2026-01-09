@@ -1,0 +1,368 @@
+    Checking fluxdb-core v0.1.0 (C:\Users\shrav\Desktop\Referrals\FluxDb\fluxdb\fluxdb-core)
+warning: unused import: `Result`
+ --> fluxdb-core\src\memtable\mod.rs:8:64
+  |
+8 | use crate::{DataPoint, Point, SeriesKey, Timestamp, TimeRange, Result};
+  |                                                                ^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `GroupBy`
+ --> fluxdb-core\src\query\planner.rs:3:43
+  |
+3 | use super::{Query, SelectItem, Condition, GroupBy, AggregateFunc};
+  |                                           ^^^^^^^
+
+warning: unused import: `SeriesKey`
+ --> fluxdb-core\src\query\planner.rs:4:21
+  |
+4 | use crate::{Result, SeriesKey, TimeRange};
+  |                     ^^^^^^^^^
+
+warning: unused import: `std::collections::HashSet`
+ --> fluxdb-core\src\query\planner.rs:5:5
+  |
+5 | use std::collections::HashSet;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Aggregation` and `SortOrder`
+ --> fluxdb-core\src\query\executor.rs:4:15
+  |
+4 |     planner::{Aggregation, FieldSelection, QueryPlan, SortOrder},
+  |               ^^^^^^^^^^^                             ^^^^^^^^^
+
+warning: unused import: `TimeRange`
+ --> fluxdb-core\src\query\executor.rs:7:55
+  |
+7 | use crate::{DataPoint, FieldValue, Result, SeriesKey, TimeRange};
+  |                                                       ^^^^^^^^^
+
+warning: unused import: `BTreeMap`
+ --> fluxdb-core\src\query\executor.rs:8:24
+  |
+8 | use std::collections::{BTreeMap, HashMap};
+  |                        ^^^^^^^^
+
+warning: unused imports: `DataPoint`, `Result`, and `SeriesKey`
+  --> fluxdb-core\src\query\mod.rs:13:13
+   |
+13 | use crate::{DataPoint, Result, SeriesKey, TimeRange, Timestamp};
+   |             ^^^^^^^^^  ^^^^^^  ^^^^^^^^^
+
+warning: unused imports: `DataPoint`, `FieldValue`, and `Fields`
+ --> fluxdb-core\src\sstable\block.rs:3:13
+  |
+3 | use crate::{DataPoint, FieldValue, Fields, Result, FluxError};
+  |             ^^^^^^^^^  ^^^^^^^^^^  ^^^^^^
+
+warning: unused import: `std::collections::BTreeMap`
+ --> fluxdb-core\src\sstable\block.rs:6:5
+  |
+6 | use std::collections::BTreeMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `FieldValue` and `FluxError`
+ --> fluxdb-core\src\sstable\builder.rs:5:24
+  |
+5 | use crate::{DataPoint, FieldValue, Point, Result, FluxError, SeriesKey, Timestamp};
+  |                        ^^^^^^^^^^                 ^^^^^^^^^
+
+warning: unused import: `MemTableKey`
+ --> fluxdb-core\src\sstable\builder.rs:6:42
+  |
+6 | use crate::memtable::{ImmutableMemTable, MemTableKey};
+  |                                          ^^^^^^^^^^^
+
+warning: unused import: `crate::Result`
+ --> fluxdb-core\src\sstable\bloom.rs:3:5
+  |
+3 | use crate::Result;
+  |     ^^^^^^^^^^^^^
+
+warning: unused import: `SSTableMeta`
+ --> fluxdb-core\src\storage\database.rs:5:53
+  |
+5 | use crate::sstable::{SSTableBuilder, SSTableConfig, SSTableMeta, SSTableReader};
+  |                                                     ^^^^^^^^^^^
+
+warning: unused import: `FluxError`
+ --> fluxdb-core\src\storage\database.rs:7:39
+  |
+7 | use crate::{DataPoint, Point, Result, FluxError, SeriesKey, TimeRange};
+  |                                       ^^^^^^^^^
+
+warning: unused import: `std::collections::BTreeMap`
+ --> fluxdb-core\src\storage\database.rs:9:5
+  |
+9 | use std::collections::BTreeMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `SSTableBuilder`
+ --> fluxdb-core\src\compaction\mod.rs:3:22
+  |
+3 | use crate::sstable::{SSTableBuilder, SSTableConfig, SSTableMeta, SSTableReader};
+  |                      ^^^^^^^^^^^^^^
+
+warning: unused import: `FluxError`
+ --> fluxdb-core\src\compaction\mod.rs:4:21
+  |
+4 | use crate::{Result, FluxError, DataPoint, SeriesKey};
+  |                     ^^^^^^^^^
+
+warning: unused import: `std::sync::Arc`
+ --> fluxdb-core\src\compaction\mod.rs:7:5
+  |
+7 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+
+warning: unused variable: `meta`
+   --> fluxdb-core\src\storage\database.rs:313:13
+    |
+313 |         let meta = SSTableBuilder::build_from_memtable(
+    |             ^^^^ help: if this is intentional, prefix it with an underscore: `_meta`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> fluxdb-core\src\compaction\mod.rs:258:13
+    |
+258 |         let mut merged: BTreeMap<(SeriesKey, i64), DataPoint> = BTreeMap::new();
+    |             ----^^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `reader`
+   --> fluxdb-core\src\compaction\mod.rs:261:17
+    |
+261 |             let reader = SSTableReader::open(meta.path.clone())?;
+    |                 ^^^^^^ help: if this is intentional, prefix it with an underscore: `_reader`
+
+warning: unused variable: `level`
+   --> fluxdb-core\src\compaction\mod.rs:271:9
+    |
+271 |         level: u32,
+    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_level`
+
+warning: unused variable: `data`
+   --> fluxdb-core\src\compaction\mod.rs:272:9
+    |
+272 |         data: BTreeMap<(SeriesKey, i64), DataPoint>,
+    |         ^^^^ help: if this is intentional, prefix it with an underscore: `_data`
+
+warning: method `len` is never used
+  --> fluxdb-core\src\sstable\block.rs:99:12
+   |
+77 | impl BlockBuilder {
+   | ----------------- method in this implementation
+...
+99 |     pub fn len(&self) -> usize {
+   |            ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `data_dir` and `task_tx` are never read
+  --> fluxdb-core\src\compaction\mod.rs:31:5
+   |
+30 | pub struct CompactionScheduler {
+   |            ------------------- fields in this struct
+31 |     data_dir: PathBuf,
+   |     ^^^^^^^^
+...
+34 |     task_tx: Option<mpsc::Sender<CompactionTask>>,
+   |     ^^^^^^^
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> fluxdb-core\src\memtable\skiplist.rs:45:40
+   |
+45 |                 while let Some(next) = (*current).forward[i] {
+   |                                        ^^-------^^^^^^^^^^^^
+   |                                          |
+   |                                          this raw pointer has type `*mut Node<K, V>`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&Vec<std::option::Option<NonNull<Node<K, V>>>>`
+  --> fluxdb-core\src\memtable\skiplist.rs:45:40
+   |
+45 |                 while let Some(next) = (*current).forward[i] {
+   |                                        ^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(dangerous_implicit_autorefs)]` on by default
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+45 |                 while let Some(next) = (&(*current).forward)[i] {
+   |                                        ++                  +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> fluxdb-core\src\memtable\skiplist.rs:62:33
+   |
+62 |             if let Some(next) = (*current).forward[0] {
+   |                                 ^^-------^^^^^^^^^^^^
+   |                                   |
+   |                                   this raw pointer has type `*mut Node<K, V>`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&Vec<std::option::Option<NonNull<Node<K, V>>>>`
+  --> fluxdb-core\src\memtable\skiplist.rs:62:33
+   |
+62 |             if let Some(next) = (*current).forward[0] {
+   |                                 ^^^^^^^^^^^^^^^^^^
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+62 |             if let Some(next) = (&(*current).forward)[0] {
+   |                                 ++                  +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> fluxdb-core\src\memtable\skiplist.rs:89:59
+   |
+89 |                     (*new_node_ptr.as_ptr()).forward[i] = (*prev).forward[i];
+   |                                                           ^^----^^^^^^^^^^^^
+   |                                                             |
+   |                                                             this raw pointer has type `*mut Node<K, V>`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&Vec<std::option::Option<NonNull<Node<K, V>>>>`
+  --> fluxdb-core\src\memtable\skiplist.rs:89:59
+   |
+89 |                     (*new_node_ptr.as_ptr()).forward[i] = (*prev).forward[i];
+   |                                                           ^^^^^^^^^^^^^^^
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+89 |                     (*new_node_ptr.as_ptr()).forward[i] = (&(*prev).forward)[i];
+   |                                                           ++               +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> fluxdb-core\src\memtable\skiplist.rs:89:21
+   |
+89 |                     (*new_node_ptr.as_ptr()).forward[i] = (*prev).forward[i];
+   |                     ^^---------------------^^^^^^^^^^^^
+   |                       |
+   |                       this raw pointer has type `*mut Node<K, V>`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&mut Vec<std::option::Option<NonNull<Node<K, V>>>>`
+  --> fluxdb-core\src\memtable\skiplist.rs:89:21
+   |
+89 |                     (*new_node_ptr.as_ptr()).forward[i] = (*prev).forward[i];
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+89 |                     (&mut (*new_node_ptr.as_ptr()).forward)[i] = (*prev).forward[i];
+   |                     +++++                                 +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+  --> fluxdb-core\src\memtable\skiplist.rs:90:21
+   |
+90 |                     (*prev).forward[i] = Some(new_node_ptr);
+   |                     ^^----^^^^^^^^^^^^
+   |                       |
+   |                       this raw pointer has type `*mut Node<K, V>`
+   |
+   = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&mut Vec<std::option::Option<NonNull<Node<K, V>>>>`
+  --> fluxdb-core\src\memtable\skiplist.rs:90:21
+   |
+90 |                     (*prev).forward[i] = Some(new_node_ptr);
+   |                     ^^^^^^^^^^^^^^^
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+   |
+90 |                     (&mut (*prev).forward)[i] = Some(new_node_ptr);
+   |                     +++++                +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+   --> fluxdb-core\src\memtable\skiplist.rs:104:40
+    |
+104 |                 while let Some(next) = (*current).forward[i] {
+    |                                        ^^-------^^^^^^^^^^^^
+    |                                          |
+    |                                          this raw pointer has type `*const Node<K, V>`
+    |
+    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&Vec<std::option::Option<NonNull<Node<K, V>>>>`
+   --> fluxdb-core\src\memtable\skiplist.rs:104:40
+    |
+104 |                 while let Some(next) = (*current).forward[i] {
+    |                                        ^^^^^^^^^^^^^^^^^^
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+    |
+104 |                 while let Some(next) = (&(*current).forward)[i] {
+    |                                        ++                  +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+   --> fluxdb-core\src\memtable\skiplist.rs:129:40
+    |
+129 |                 while let Some(next) = (*current).forward[i] {
+    |                                        ^^-------^^^^^^^^^^^^
+    |                                          |
+    |                                          this raw pointer has type `*const Node<K, V>`
+    |
+    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&Vec<std::option::Option<NonNull<Node<K, V>>>>`
+   --> fluxdb-core\src\memtable\skiplist.rs:129:40
+    |
+129 |                 while let Some(next) = (*current).forward[i] {
+    |                                        ^^^^^^^^^^^^^^^^^^
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+    |
+129 |                 while let Some(next) = (&(*current).forward)[i] {
+    |                                        ++                  +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+   --> fluxdb-core\src\memtable\skiplist.rs:145:36
+    |
+145 |             while let Some(next) = (*current).forward[0] {
+    |                                    ^^-------^^^^^^^^^^^^
+    |                                      |
+    |                                      this raw pointer has type `*const Node<K, V>`
+    |
+    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&Vec<std::option::Option<NonNull<Node<K, V>>>>`
+   --> fluxdb-core\src\memtable\skiplist.rs:145:36
+    |
+145 |             while let Some(next) = (*current).forward[0] {
+    |                                    ^^^^^^^^^^^^^^^^^^
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+    |
+145 |             while let Some(next) = (&(*current).forward)[0] {
+    |                                    ++                  +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+   --> fluxdb-core\src\memtable\skiplist.rs:169:36
+    |
+169 |             while let Some(next) = (*current).forward[0] {
+    |                                    ^^-------^^^^^^^^^^^^
+    |                                      |
+    |                                      this raw pointer has type `*const Node<K, V>`
+    |
+    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&Vec<std::option::Option<NonNull<Node<K, V>>>>`
+   --> fluxdb-core\src\memtable\skiplist.rs:169:36
+    |
+169 |             while let Some(next) = (*current).forward[0] {
+    |                                    ^^^^^^^^^^^^^^^^^^
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+    |
+169 |             while let Some(next) = (&(*current).forward)[0] {
+    |                                    ++                  +
+
+error: implicit autoref creates a reference to the dereference of a raw pointer
+   --> fluxdb-core\src\memtable\skiplist.rs:231:28
+    |
+231 |                 let next = (*node.as_ptr()).forward[0];
+    |                            ^^-------------^^^^^^^^^^^^
+    |                              |
+    |                              this raw pointer has type `*mut Node<K, V>`
+    |
+    = note: creating a reference requires the pointer target to be valid and imposes aliasing requirements
+note: autoref is being applied to this expression, resulting in: `&Vec<std::option::Option<NonNull<Node<K, V>>>>`
+   --> fluxdb-core\src\memtable\skiplist.rs:231:28
+    |
+231 |                 let next = (*node.as_ptr()).forward[0];
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^
+help: try using a raw pointer method instead; or if this reference is intentional, make it explicit
+    |
+231 |                 let next = (&(*node.as_ptr()).forward)[0];
+    |                            ++                        +
+
+warning: `fluxdb-core` (lib) generated 26 warnings
+error: could not compile `fluxdb-core` (lib) due to 10 previous errors; 26 warnings emitted
