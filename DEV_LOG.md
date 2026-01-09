@@ -447,3 +447,4 @@
 - 2026-01-07 22:12:52: fix(table): fix column width calculation
 - 2026-01-08 17:30:00: docs: update README with getting started
 - 2026-01-08 18:20:41: fix(mvcc): fix visibility rules for snapshots
+- 2026-01-09 09:20:53: fix(mvcc): fix visibility rules for snapshots
