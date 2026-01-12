@@ -448,3 +448,4 @@
 - 2026-01-08 17:30:00: docs: update README with getting started
 - 2026-01-08 18:20:41: fix(mvcc): fix visibility rules for snapshots
 - 2026-01-09 09:20:53: fix(mvcc): fix visibility rules for snapshots
+- 2026-01-12 16:09:20: feat(core): initialize storage engine structure
