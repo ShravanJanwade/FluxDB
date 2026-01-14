@@ -452,3 +452,4 @@
 - 2026-01-12 14:22:29: chore(deps): update rust dependencies
 - 2026-01-12 11:06:40: refactor(core): cleanup module structure
 - 2026-01-13 16:28:27: test(core): add unit tests for memtable
+- 2026-01-14 15:10:02: fix(table): fix column width calculation
