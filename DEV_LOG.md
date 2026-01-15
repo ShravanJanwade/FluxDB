@@ -454,3 +454,4 @@
 - 2026-01-13 16:28:27: test(core): add unit tests for memtable
 - 2026-01-14 15:10:02: fix(table): fix column width calculation
 - 2026-01-14 14:56:30: feat(txn): add basic transaction manager
+- 2026-01-15 16:53:23: feat(query): support INSERT statements
