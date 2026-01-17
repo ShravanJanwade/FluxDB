@@ -458,3 +458,4 @@
 - 2026-01-15 10:57:56: fix(table): fix column width calculation
 - 2026-01-16 19:44:15: feat(query): support INSERT statements
 - 2026-01-17 10:54:53: feat(settings): add user preferences page
+- 2026-01-17 11:09:50: feat(query-editor): support syntax highlighting for sql
