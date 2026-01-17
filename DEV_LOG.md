@@ -456,3 +456,4 @@
 - 2026-01-14 14:56:30: feat(txn): add basic transaction manager
 - 2026-01-15 16:53:23: feat(query): support INSERT statements
 - 2026-01-15 10:57:56: fix(table): fix column width calculation
+- 2026-01-16 19:44:15: feat(query): support INSERT statements
