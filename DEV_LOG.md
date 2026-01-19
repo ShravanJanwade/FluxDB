@@ -459,3 +459,4 @@
 - 2026-01-16 19:44:15: feat(query): support INSERT statements
 - 2026-01-17 10:54:53: feat(settings): add user preferences page
 - 2026-01-17 11:09:50: feat(query-editor): support syntax highlighting for sql
+- 2026-01-19 18:54:18: chore(logging): switch to tracing crate
