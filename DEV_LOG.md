@@ -461,3 +461,4 @@
 - 2026-01-17 11:09:50: feat(query-editor): support syntax highlighting for sql
 - 2026-01-19 18:54:18: chore(logging): switch to tracing crate
 - 2026-01-20 13:34:38: fix(index): handle node splitting correctly
+- 2026-01-20 16:16:28: feat(dashboard): create main layout structure
