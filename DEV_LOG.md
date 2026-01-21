@@ -464,3 +464,4 @@
 - 2026-01-20 16:16:28: feat(dashboard): create main layout structure
 - 2026-01-21 15:05:57: feat(visualizer): add query plan visualization
 - 2026-01-21 15:49:47: perf(server): perform async io handling
+- 2026-01-21 11:46:06: feat(executor): implement scanning of tables
