@@ -465,3 +465,4 @@
 - 2026-01-21 15:05:57: feat(visualizer): add query plan visualization
 - 2026-01-21 15:49:47: perf(server): perform async io handling
 - 2026-01-21 11:46:06: feat(executor): implement scanning of tables
+- 2026-01-21 09:31:34: fix(wal): correct log rotation logic
