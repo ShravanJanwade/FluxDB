@@ -468,3 +468,4 @@
 - 2026-01-21 09:31:34: fix(wal): correct log rotation logic
 - 2026-01-21 18:19:53: feat(results): display query results in table
 - 2026-01-22 16:28:16: feat(ui): setup react and tailwindcss
+- 2026-01-22 17:16:38: feat(settings): add user preferences page
