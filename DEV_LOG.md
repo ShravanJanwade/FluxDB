@@ -469,3 +469,4 @@
 - 2026-01-21 18:19:53: feat(results): display query results in table
 - 2026-01-22 16:28:16: feat(ui): setup react and tailwindcss
 - 2026-01-22 17:16:38: feat(settings): add user preferences page
+- 2026-01-23 14:58:06: feat(txn): add basic transaction manager
