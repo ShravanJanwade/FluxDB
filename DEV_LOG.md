@@ -471,3 +471,4 @@
 - 2026-01-22 17:16:38: feat(settings): add user preferences page
 - 2026-01-23 14:58:06: feat(txn): add basic transaction manager
 - 2026-01-24 09:24:12: fix(mvcc): fix visibility rules for snapshots
+- 2026-01-26 10:03:33: feat(api): add health check endpoint
