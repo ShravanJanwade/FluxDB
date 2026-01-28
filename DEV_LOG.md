@@ -474,3 +474,4 @@
 - 2026-01-26 10:03:33: feat(api): add health check endpoint
 - 2026-01-27 16:39:26: fix(server): fix connection leak on timeout
 - 2026-01-27 11:07:18: feat(visualizer): add query plan visualization
+- 2026-01-28 12:06:05: refactor(core): cleanup module structure
