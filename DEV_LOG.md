@@ -476,3 +476,4 @@
 - 2026-01-27 11:07:18: feat(visualizer): add query plan visualization
 - 2026-01-28 12:06:05: refactor(core): cleanup module structure
 - 2026-01-28 16:13:00: feat(results): display query results in table
+- 2026-01-29 18:17:09: fix(parser): handle trailing semicolons correctly
