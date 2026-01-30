@@ -479,3 +479,4 @@
 - 2026-01-29 18:17:09: fix(parser): handle trailing semicolons correctly
 - 2026-01-29 10:14:57: fix(mvcc): fix visibility rules for snapshots
 - 2026-01-29 16:49:26: feat(studio): initialize electron project
+- 2026-01-30 10:14:51: test: fix flaky tests
