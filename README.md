@@ -38,24 +38,24 @@ FluxDb uses a modular architecture separating the storage layer from the query p
 ```mermaid
 graph TD
     subgraph "Client Layer"
-        Studio[🖥️ FluxDb Studio]
-        CLI[💻 FluxDb CLI]
+        Studio["🖥️ FluxDb Studio"]
+        CLI["💻 FluxDb CLI"]
     end
 
     subgraph "FluxDb Server (Rust)"
-        Networking[📡 Network Handler (TCP/Wire)]
+        Networking["📡 Network Handler (TCP/Wire)"]
         
         subgraph "Query Engine"
-            Parser[📝 SQL Parser]
-            Planner[🧠 Query Planner]
-            Executor[⚡ Query Executor]
+            Parser["📝 SQL Parser"]
+            Planner["🧠 Query Planner"]
+            Executor["⚡ Query Executor"]
         end
 
         subgraph "Storage Engine (LSM-Tree)"
-            MemTable[📦 MemTable (SkipList)]
-            WAL[📝 Write-Ahead Log]
-            SSTables[💾 SSTables (Disk)]
-            Compactor[🧹 Background Compaction]
+            MemTable["📦 MemTable (SkipList)"]
+            WAL["📝 Write-Ahead Log"]
+            SSTables["💾 SSTables (Disk)"]
+            Compactor["🧹 Background Compaction"]
         end
     end
 
