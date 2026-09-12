@@ -1,6 +1,5 @@
 //! Bloom filter for fast existence checks
 
-use crate::Result;
 use std::hash::{Hash, Hasher};
 
 /// Bloom filter implementation
@@ -15,12 +14,13 @@ impl BloomFilter {
     /// Create a new bloom filter
     pub fn new(num_keys: usize, bits_per_key: usize) -> Self {
         let num_bits = num_keys * bits_per_key;
-        let num_bytes = (num_bits + 7) / 8;
-        
+        let num_bytes = ((num_bits + 7) / 8).max(1);
+        let num_bits = num_bytes * 8;
+
         // Optimal number of hash functions
         let num_hashes = ((bits_per_key as f64) * 0.69).round() as usize;
         let num_hashes = num_hashes.clamp(1, 30);
-        
+
         Self {
             bits: vec![0u8; num_bytes],
             num_bits,
@@ -41,7 +41,7 @@ impl BloomFilter {
     /// Add a key to the filter
     pub fn add<K: Hash>(&mut self, key: &K) {
         let (h1, h2) = self.hash_key(key);
-        
+
         for i in 0..self.num_hashes {
             let bit = self.bit_position(h1, h2, i);
             self.set_bit(bit);
@@ -51,14 +51,14 @@ impl BloomFilter {
     /// Check if a key may be in the set
     pub fn may_contain<K: Hash>(&self, key: &K) -> bool {
         let (h1, h2) = self.hash_key(key);
-        
+
         for i in 0..self.num_hashes {
             let bit = self.bit_position(h1, h2, i);
             if !self.get_bit(bit) {
                 return false;
             }
         }
-        
+
         true
     }
 
@@ -84,12 +84,12 @@ impl BloomFilter {
         let mut hasher1 = std::collections::hash_map::DefaultHasher::new();
         key.hash(&mut hasher1);
         let h1 = hasher1.finish();
-        
+
         // Use a different seed for second hash
         let mut hasher2 = std::collections::hash_map::DefaultHasher::new();
         h1.hash(&mut hasher2);
         let h2 = hasher2.finish();
-        
+
         (h1, h2)
     }
 
@@ -124,16 +124,16 @@ mod tests {
     #[test]
     fn test_bloom_filter_basic() {
         let mut filter = BloomFilter::new(100, 10);
-        
+
         for i in 0..100 {
             filter.add(&format!("key-{}", i));
         }
-        
+
         // All added keys should be found
         for i in 0..100 {
             assert!(filter.may_contain(&format!("key-{}", i)));
         }
-        
+
         // Count false positives for non-existent keys
         let mut false_positives = 0;
         for i in 100..1000 {
@@ -141,7 +141,7 @@ mod tests {
                 false_positives += 1;
             }
         }
-        
+
         // False positive rate should be around 1%
         let fp_rate = false_positives as f64 / 900.0;
         assert!(fp_rate < 0.05, "False positive rate too high: {}", fp_rate);
@@ -150,16 +150,16 @@ mod tests {
     #[test]
     fn test_bloom_filter_serialization() {
         let mut filter = BloomFilter::new(50, 10);
-        
+
         for i in 0..50 {
             filter.add(&i);
         }
-        
+
         let bytes = filter.as_bytes().to_vec();
         let num_hashes = filter.num_hashes();
-        
+
         let restored = BloomFilter::from_bytes(bytes, num_hashes);
-        
+
         for i in 0..50 {
             assert!(restored.may_contain(&i));
         }

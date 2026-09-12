@@ -1,0 +1,35 @@
+name: Verify FluxDB
+on: [push, pull_request]
+jobs:
+  rust:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+        working-directory: fluxdb
+      - run: cargo test --workspace --locked
+        working-directory: fluxdb
+      - run: cargo build --release --locked -p fluxdb-server
+        working-directory: fluxdb
+      - run: python scripts/smoke.py
+  studio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: fluxdb-studio/package-lock.json
+      - run: npm ci
+        working-directory: fluxdb-studio
+      - run: npm run build
+        working-directory: fluxdb-studio
+      - run: npm test
+        working-directory: fluxdb-studio

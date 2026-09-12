@@ -1,5 +1,5 @@
 //! Query engine for FluxDB
-//! 
+//!
 //! Supports:
 //! - SELECT with aggregations, DISTINCT
 //! - JOIN operations (INNER, LEFT, RIGHT, FULL OUTER)
@@ -7,17 +7,17 @@
 //! - UPDATE and DELETE statements
 //! - Advanced conditions (IN, BETWEEN, LIKE, IS NULL)
 
+mod aggregates;
+mod executor;
 mod parser;
 mod planner;
-mod executor;
-mod aggregates;
 
+pub use aggregates::*;
+pub use executor::QueryExecutor;
 pub use parser::QueryParser;
 pub use planner::{QueryPlan, QueryPlanner};
-pub use executor::QueryExecutor;
-pub use aggregates::*;
 
-use crate::{DataPoint, Result, SeriesKey, TimeRange, Timestamp};
+use crate::{TimeRange, Timestamp};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -55,7 +55,7 @@ impl Default for QueryResult {
 pub struct QueryRow {
     /// Timestamp (if applicable)
     pub time: Option<Timestamp>,
-    /// Series key 
+    /// Series key
     pub series: Option<String>,
     /// Values (matching columns)
     pub values: Vec<QueryValue>,
@@ -80,7 +80,7 @@ impl QueryValue {
             _ => None,
         }
     }
-    
+
     pub fn as_string(&self) -> Option<String> {
         match self {
             QueryValue::String(s) => Some(s.clone()),
@@ -90,7 +90,7 @@ impl QueryValue {
             QueryValue::Null => None,
         }
     }
-    
+
     pub fn is_null(&self) -> bool {
         matches!(self, QueryValue::Null)
     }
@@ -284,10 +284,7 @@ pub enum Expr {
         right: Box<Expr>,
     },
     /// Function call
-    Function {
-        name: String,
-        args: Vec<Expr>,
-    },
+    Function { name: String, args: Vec<Expr> },
     /// CASE expression
     Case {
         operand: Option<Box<Expr>>,
@@ -361,21 +358,52 @@ pub enum Condition {
     /// Tag equals value
     TagEquals { tag: String, value: String },
     /// Field comparison
-    FieldCompare { field: String, op: CompareOp, value: f64 },
+    FieldCompare {
+        field: String,
+        op: CompareOp,
+        value: f64,
+    },
+    /// Typed literal comparison preserves exact integers and booleans.
+    ValueCompare {
+        field: String,
+        op: CompareOp,
+        value: QueryValue,
+    },
     /// String field comparison
-    StringCompare { field: String, op: CompareOp, value: String },
+    StringCompare {
+        field: String,
+        op: CompareOp,
+        value: String,
+    },
     /// IN operator (field IN (value1, value2, ...))
-    In { field: String, values: Vec<QueryValue>, negated: bool },
+    In {
+        field: String,
+        values: Vec<QueryValue>,
+        negated: bool,
+    },
     /// BETWEEN operator
-    Between { field: String, low: QueryValue, high: QueryValue, negated: bool },
+    Between {
+        field: String,
+        low: QueryValue,
+        high: QueryValue,
+        negated: bool,
+    },
     /// LIKE operator for pattern matching
-    Like { field: String, pattern: String, negated: bool },
+    Like {
+        field: String,
+        pattern: String,
+        negated: bool,
+    },
     /// IS NULL / IS NOT NULL
     IsNull { field: String, negated: bool },
     /// EXISTS subquery
     Exists { subquery: Box<Query>, negated: bool },
     /// Subquery comparison (field op (SELECT ...))
-    SubqueryCompare { field: String, op: CompareOp, subquery: Box<Query> },
+    SubqueryCompare {
+        field: String,
+        op: CompareOp,
+        subquery: Box<Query>,
+    },
     /// AND combination
     And(Box<Condition>, Box<Condition>),
     /// OR combination
@@ -387,15 +415,15 @@ pub enum Condition {
 /// Comparison operator
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompareOp {
-    Eq,      // =
-    Ne,      // != or <>
-    Lt,      // <
-    Le,      // <=
-    Gt,      // >
-    Ge,      // >=
-    Like,    // LIKE
-    NotLike, // NOT LIKE
-    RegexMatch, // ~
+    Eq,            // =
+    Ne,            // != or <>
+    Lt,            // <
+    Le,            // <=
+    Gt,            // >
+    Ge,            // >=
+    Like,          // LIKE
+    NotLike,       // NOT LIKE
+    RegexMatch,    // ~
     RegexNotMatch, // !~
 }
 
@@ -451,19 +479,19 @@ impl OrderBy {
     /// Create a simple single-field order by (legacy)
     pub fn simple(field: String, descending: bool) -> Self {
         Self {
-            items: vec![OrderByItem { 
-                field, 
-                descending, 
-                nulls_first: None 
+            items: vec![OrderByItem {
+                field,
+                descending,
+                nulls_first: None,
             }],
         }
     }
-    
+
     /// Get the first field (for backward compatibility)
     pub fn field(&self) -> Option<&str> {
         self.items.first().map(|i| i.field.as_str())
     }
-    
+
     /// Check if first field is descending
     pub fn descending(&self) -> bool {
         self.items.first().map(|i| i.descending).unwrap_or(false)

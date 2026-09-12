@@ -11,7 +11,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["FluxDB Team"]
 license = "MIT"
-rust-version = "1.75"
+rust-version = "1.89"
 
 [workspace.dependencies]
 # Async runtime

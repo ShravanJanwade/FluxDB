@@ -1,6 +1,6 @@
 //! WAL entry types and serialization
 
-use crate::{Point, Result, FluxError};
+use crate::{FluxError, Point, Result};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use serde::{Deserialize, Serialize};
 
@@ -52,8 +52,8 @@ pub struct WalEntry {
 impl WalEntry {
     /// Create a write entry for data points
     pub fn write(database: &str, points: &[Point]) -> Result<Self> {
-        let payload = bincode::serialize(points)
-            .map_err(|e| FluxError::InvalidFormat(e.to_string()))?;
+        let payload =
+            bincode::serialize(points).map_err(|e| FluxError::InvalidFormat(e.to_string()))?;
         Ok(Self {
             entry_type: WalEntryType::Write,
             database: database.to_string(),
@@ -118,6 +118,9 @@ impl WalEntry {
 
         // Read length
         let len = cursor.get_u32_le() as usize;
+        if len < 13 {
+            return Err(FluxError::InvalidFormat("Invalid entry length".into()));
+        }
         if data.len() < 4 + len {
             return Err(FluxError::InvalidFormat("Incomplete entry".into()));
         }
@@ -146,6 +149,9 @@ impl WalEntry {
         // Database name
         let db_len = cursor.get_u32_le() as usize;
         let pos = cursor.position() as usize;
+        if db_len > entry_data.len().saturating_sub(pos + 8) {
+            return Err(FluxError::InvalidFormat("Invalid database length".into()));
+        }
         let database = String::from_utf8(entry_data[pos..pos + db_len].to_vec())
             .map_err(|e| FluxError::InvalidFormat(e.to_string()))?;
         cursor.set_position((pos + db_len) as u64);
@@ -153,6 +159,9 @@ impl WalEntry {
         // Payload
         let payload_len = cursor.get_u32_le() as usize;
         let pos = cursor.position() as usize;
+        if payload_len != entry_data.len().saturating_sub(pos + 4) {
+            return Err(FluxError::InvalidFormat("Invalid payload length".into()));
+        }
         let payload = entry_data[pos..pos + payload_len].to_vec();
 
         let entry = WalEntry {
@@ -169,8 +178,7 @@ impl WalEntry {
         if self.entry_type != WalEntryType::Write {
             return Err(FluxError::InvalidFormat("Not a write entry".into()));
         }
-        bincode::deserialize(&self.payload)
-            .map_err(|e| FluxError::InvalidFormat(e.to_string()))
+        bincode::deserialize(&self.payload).map_err(|e| FluxError::InvalidFormat(e.to_string()))
     }
 }
 

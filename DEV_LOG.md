@@ -1,5 +1,7 @@
 # Development Log
 
+Historical notes retained from the earlier project. These entries are not a verified feature inventory for the current implementation. See README.md, docs/ARCHITECTURE.md, and docs/VERIFICATION.md for the supported behavior and current evidence.
+
 - 2025-04-01 18:04:04: feat(query-editor): add monaco editor integration
 - 2025-04-01 21:23:22: feat(studio): initialize electron project
 - 2025-04-02 09:44:50: test: fix flaky tests

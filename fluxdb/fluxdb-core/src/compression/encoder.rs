@@ -7,12 +7,12 @@ use super::CompressedBlock;
 pub struct GorillaEncoder {
     writer: BitWriter,
     count: usize,
-    
+
     // Timestamp state
     first_timestamp: i64,
     prev_timestamp: i64,
     prev_timestamp_delta: i64,
-    
+
     // Value state
     prev_value_bits: u64,
     prev_leading_zeros: u32,
@@ -59,10 +59,10 @@ impl GorillaEncoder {
     fn encode_first(&mut self, timestamp: i64, value: f64) {
         self.first_timestamp = timestamp;
         self.prev_timestamp = timestamp;
-        
+
         // Write first timestamp as full 64 bits
         self.writer.write_bits(timestamp as u64, 64);
-        
+
         // Write first value as full 64 bits
         let value_bits = value.to_bits();
         self.writer.write_bits(value_bits, 64);
@@ -72,10 +72,10 @@ impl GorillaEncoder {
     fn encode_timestamp(&mut self, timestamp: i64) {
         let delta = timestamp - self.prev_timestamp;
         let delta_of_delta = delta - self.prev_timestamp_delta;
-        
+
         // Most consecutive timestamps have the same delta (e.g., every 10 seconds)
         // So delta-of-delta is usually 0, encoded as a single bit
-        
+
         if delta_of_delta == 0 {
             // '0' bit: delta is the same
             self.writer.write_bit(false);
@@ -96,7 +96,7 @@ impl GorillaEncoder {
             self.writer.write_bits(0b1111, 4);
             self.writer.write_bits(delta_of_delta as u64, 64);
         }
-        
+
         self.prev_timestamp_delta = delta;
         self.prev_timestamp = timestamp;
     }
@@ -104,19 +104,20 @@ impl GorillaEncoder {
     fn encode_value(&mut self, value: f64) {
         let value_bits = value.to_bits();
         let xor = value_bits ^ self.prev_value_bits;
-        
+
         if xor == 0 {
             // Values are identical, write single '0' bit
             self.writer.write_bit(false);
         } else {
             self.writer.write_bit(true);
-            
+
             let leading_zeros = xor.leading_zeros();
             let trailing_zeros = xor.trailing_zeros();
-            
+
             // Check if the meaningful bits fit within previous window
-            if leading_zeros >= self.prev_leading_zeros 
-                && trailing_zeros >= self.prev_trailing_zeros {
+            if leading_zeros >= self.prev_leading_zeros
+                && trailing_zeros >= self.prev_trailing_zeros
+            {
                 // Use previous window
                 self.writer.write_bit(false);
                 let meaningful_bits = 64 - self.prev_leading_zeros - self.prev_trailing_zeros;
@@ -125,24 +126,24 @@ impl GorillaEncoder {
             } else {
                 // New window
                 self.writer.write_bit(true);
-                
+
                 // Leading zeros (5 bits, max 31)
                 let leading = leading_zeros.min(31);
                 self.writer.write_bits(leading as u64, 5);
-                
+
                 // Meaningful bits length (6 bits, max 64)
                 let meaningful_bits = 64 - leading_zeros - trailing_zeros;
                 self.writer.write_bits(meaningful_bits as u64, 6);
-                
+
                 // Meaningful bits
                 let shifted = xor >> trailing_zeros;
                 self.writer.write_bits(shifted, meaningful_bits as usize);
-                
+
                 self.prev_leading_zeros = leading_zeros;
                 self.prev_trailing_zeros = trailing_zeros;
             }
         }
-        
+
         self.prev_value_bits = value_bits;
     }
 }
@@ -162,7 +163,7 @@ mod tests {
         let mut encoder = GorillaEncoder::new();
         encoder.encode(1000000000, 23.5);
         let block = encoder.finish();
-        
+
         assert_eq!(block.count, 1);
         assert_eq!(block.first_timestamp, 1000000000);
         assert_eq!(block.last_timestamp, 1000000000);
@@ -171,36 +172,52 @@ mod tests {
     #[test]
     fn test_encoder_constant_delta() {
         let mut encoder = GorillaEncoder::new();
-        
+
         // Constant 10-second intervals
         for i in 0..100 {
             encoder.encode(1000000000 + i * 10_000_000_000, 23.5);
         }
-        
+
         let block = encoder.finish();
         assert_eq!(block.count, 100);
-        
+
         // With constant delta and constant value, compression should be excellent
         // Each additional point should take about 2 bits (1 for timestamp, 1 for value)
         let bytes_per_point = block.bytes_per_point();
-        assert!(bytes_per_point < 2.0, "Expected < 2 bytes/point for constant data, got {}", bytes_per_point);
+        assert!(
+            bytes_per_point < 2.0,
+            "Expected < 2 bytes/point for constant data, got {}",
+            bytes_per_point
+        );
     }
 
     #[test]
     fn test_encoder_varying_values() {
         let mut encoder = GorillaEncoder::new();
-        
+
         for i in 0..1000 {
             let timestamp = 1000000000 + i * 10_000_000_000;
             let value = 20.0 + (i as f64 * 0.1).sin() * 5.0;
             encoder.encode(timestamp, value);
         }
-        
+
         let block = encoder.finish();
         assert_eq!(block.count, 1000);
-        
-        // Gorilla typically achieves 1.3-1.5 bytes per point on real data
+
+        // Smooth-looking sine samples still have high-entropy IEEE-754 mantissas.
+        // Require lossless recovery and improvement over raw (i64, f64) storage.
+        let decoded = crate::compression::GorillaDecoder::new(&block.data, block.count)
+            .decode_all()
+            .unwrap();
+        for (i, (ts, value)) in decoded.iter().enumerate() {
+            assert_eq!(*ts, 1000000000 + i as i64 * 10_000_000_000);
+            assert_eq!(*value, 20.0 + (i as f64 * 0.1).sin() * 5.0);
+        }
         let bytes_per_point = block.bytes_per_point();
-        assert!(bytes_per_point < 5.0, "Expected < 5 bytes/point, got {}", bytes_per_point);
+        assert!(
+            bytes_per_point < 16.0,
+            "Expected less than raw 16 bytes/point, got {}",
+            bytes_per_point
+        );
     }
 }

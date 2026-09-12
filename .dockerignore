@@ -1,0 +1,10 @@
+**/target
+**/node_modules
+**/dist
+**/dist-electron
+.git
+.runtime
+**/data
+.env
+.env.*
+**/*.log

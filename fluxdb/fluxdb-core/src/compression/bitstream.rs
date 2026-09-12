@@ -46,7 +46,7 @@ impl BitWriter {
     #[inline]
     pub fn write_bits(&mut self, value: u64, num_bits: usize) {
         debug_assert!(num_bits <= 64);
-        
+
         for i in (0..num_bits).rev() {
             self.write_bit((value >> i) & 1 == 1);
         }
@@ -117,7 +117,7 @@ impl<'a> BitReader<'a> {
     #[inline]
     pub fn read_bits(&mut self, num_bits: usize) -> Option<u64> {
         debug_assert!(num_bits <= 64);
-        
+
         let mut value = 0u64;
         for _ in 0..num_bits {
             let bit = self.read_bit()?;
@@ -144,7 +144,7 @@ mod tests {
     #[test]
     fn test_bit_writer_reader() {
         let mut writer = BitWriter::new();
-        
+
         writer.write_bit(true);
         writer.write_bit(false);
         writer.write_bit(true);
@@ -152,7 +152,7 @@ mod tests {
         writer.write_bits(0xFF, 8);
 
         let data = writer.finish();
-        
+
         let mut reader = BitReader::new(&data);
         assert_eq!(reader.read_bit(), Some(true));
         assert_eq!(reader.read_bit(), Some(false));
@@ -164,15 +164,15 @@ mod tests {
     #[test]
     fn test_write_read_various_sizes() {
         let mut writer = BitWriter::new();
-        
+
         // Write values of various bit lengths
-        writer.write_bits(0b111, 3);       // 3 bits
-        writer.write_bits(0b10101, 5);     // 5 bits
-        writer.write_bits(0xABCD, 16);     // 16 bits
+        writer.write_bits(0b111, 3); // 3 bits
+        writer.write_bits(0b10101, 5); // 5 bits
+        writer.write_bits(0xABCD, 16); // 16 bits
         writer.write_bits(0xDEADBEEF, 32); // 32 bits
 
         let data = writer.finish();
-        
+
         let mut reader = BitReader::new(&data);
         assert_eq!(reader.read_bits(3), Some(0b111));
         assert_eq!(reader.read_bits(5), Some(0b10101));

@@ -34,10 +34,11 @@ impl WalWriter {
         let segment_id = Self::find_latest_segment(&config.dir)?;
         let file = Self::open_segment(&config.dir, segment_id)?;
 
+        let existing_size = file.metadata()?.len() as usize;
         let inner = WalWriterInner {
             file: BufWriter::new(file),
             segment_id,
-            bytes_written: 0,
+            bytes_written: existing_size,
             writes_since_sync: 0,
             last_sync: Instant::now(),
         };
@@ -72,7 +73,9 @@ impl WalWriter {
             inner.last_sync = Instant::now();
         }
 
-        let offset = self.current_offset.fetch_add(serialized.len() as u64, Ordering::Relaxed);
+        let offset = self
+            .current_offset
+            .fetch_add(serialized.len() as u64, Ordering::Relaxed);
         Ok(offset)
     }
 
@@ -84,6 +87,16 @@ impl WalWriter {
         inner.writes_since_sync = 0;
         inner.last_sync = Instant::now();
         Ok(())
+    }
+
+    /// Rotate at a database checkpoint while its write lock is held.
+    pub fn checkpoint_segment(&self) -> Result<u64> {
+        let mut inner = self.inner.lock();
+        self.rotate_segment(&mut inner)?;
+        inner.file.get_ref().sync_all()?;
+        #[cfg(unix)]
+        File::open(&self.config.dir)?.sync_all()?;
+        Ok(inner.segment_id)
     }
 
     /// Get current segment ID
@@ -98,7 +111,10 @@ impl WalWriter {
             let entry = entry?;
             let path = entry.path();
             if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                if let Some(id) = name.strip_prefix("wal_").and_then(|s| s.strip_suffix(".log")) {
+                if let Some(id) = name
+                    .strip_prefix("wal_")
+                    .and_then(|s| s.strip_suffix(".log"))
+                {
                     if let Ok(id) = id.parse::<u64>() {
                         if id < segment_id {
                             fs::remove_file(&path)?;
@@ -144,7 +160,9 @@ impl WalWriter {
                 let entry = entry?;
                 let path = entry.path();
                 if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    if let Some(id) = name.strip_prefix("wal_").and_then(|s| s.strip_suffix(".log"))
+                    if let Some(id) = name
+                        .strip_prefix("wal_")
+                        .and_then(|s| s.strip_suffix(".log"))
                     {
                         if let Ok(id) = id.parse::<u64>() {
                             max_id = max_id.max(id);

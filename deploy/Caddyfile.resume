@@ -1,0 +1,24 @@
+(fluxdb_upstream) {
+    reverse_proxy studio:8080 {
+        # The admin token stays on the server, behind the method/path allowlist.
+        header_up Authorization "Bearer {$FLUXDB_TOKEN}"
+    }
+}
+
+{$DEMO_HOST} {
+    @read method GET HEAD
+    @query {
+        method POST
+        path /api/v1/databases/*/query /api/v1/assistant/chat
+    }
+    handle @read {
+        import fluxdb_upstream
+    }
+    handle @query {
+        import fluxdb_upstream
+    }
+    handle {
+        header Content-Type application/json
+        respond `{"error":"This public demo is read-only. Database changes are available only through the private administrator connection."}` 403
+    }
+}

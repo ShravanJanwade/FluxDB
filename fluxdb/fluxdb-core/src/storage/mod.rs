@@ -1,10 +1,10 @@
 //! Storage engine - coordinates all storage components
 
-mod engine;
 mod database;
+mod engine;
 
-pub use engine::StorageEngine;
 pub use database::Database;
+pub use engine::StorageEngine;
 
 use crate::sstable::SSTableConfig;
 use crate::wal::WalConfig;

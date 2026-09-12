@@ -1,9 +1,8 @@
 //! SSTable data block implementation
 
-use crate::{DataPoint, FieldValue, Fields, Result, FluxError};
-use crate::compression::{GorillaEncoder, GorillaDecoder};
+use crate::compression::{GorillaDecoder, GorillaEncoder};
+use crate::{FluxError, Result};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
-use std::collections::BTreeMap;
 
 /// Block header
 #[derive(Debug, Clone)]
@@ -40,7 +39,7 @@ impl BlockHeader {
         if data.len() < Self::SIZE {
             return Err(FluxError::InvalidFormat("Block header too short".into()));
         }
-        
+
         let mut cursor = std::io::Cursor::new(data);
         Ok(Self {
             version: cursor.get_u8(),
@@ -125,7 +124,7 @@ impl DataBlock {
         // Decompress with LZ4 first
         let decompressed = lz4_flex::decompress_size_prepended(data)
             .map_err(|e| FluxError::Compression(e.to_string()))?;
-        
+
         let mut decoder = GorillaDecoder::new(&decompressed, count);
         decoder.decode_all()
     }
@@ -133,16 +132,16 @@ impl DataBlock {
     /// Serialize to bytes with optional LZ4 compression
     pub fn to_bytes(&self, use_lz4: bool) -> Bytes {
         let mut buf = BytesMut::new();
-        
+
         // Field name
         buf.put_u16_le(self.field_name.len() as u16);
         buf.put_slice(self.field_name.as_bytes());
-        
+
         // Metadata
         buf.put_u32_le(self.count as u32);
         buf.put_i64_le(self.first_timestamp);
         buf.put_i64_le(self.last_timestamp);
-        
+
         // Data (with optional LZ4)
         if use_lz4 {
             let compressed = lz4_flex::compress_prepend_size(&self.data);
@@ -154,11 +153,11 @@ impl DataBlock {
             buf.put_u32_le(self.data.len() as u32);
             buf.put_slice(&self.data);
         }
-        
+
         // Checksum
         let checksum = crc32fast::hash(&buf);
         buf.put_u32_le(checksum);
-        
+
         buf.freeze()
     }
 
@@ -167,27 +166,27 @@ impl DataBlock {
         if data.len() < 10 {
             return Err(FluxError::InvalidFormat("Block too short".into()));
         }
-        
+
         let mut cursor = std::io::Cursor::new(data);
-        
+
         // Field name
         let field_len = cursor.get_u16_le() as usize;
         let pos = cursor.position() as usize;
         let field_name = String::from_utf8(data[pos..pos + field_len].to_vec())
             .map_err(|e| FluxError::InvalidFormat(e.to_string()))?;
         cursor.set_position((pos + field_len) as u64);
-        
+
         // Metadata
         let count = cursor.get_u32_le() as usize;
         let first_timestamp = cursor.get_i64_le();
         let last_timestamp = cursor.get_i64_le();
-        
+
         // Data
         let lz4_flag = cursor.get_u8();
         let data_len = cursor.get_u32_le() as usize;
         let pos = cursor.position() as usize;
         let raw_data = data[pos..pos + data_len].to_vec();
-        
+
         // Decompress LZ4 if needed
         let block_data = if lz4_flag == 1 {
             lz4_flex::decompress_size_prepended(&raw_data)
@@ -195,7 +194,7 @@ impl DataBlock {
         } else {
             raw_data
         };
-        
+
         // Verify checksum
         let checksum_pos = pos + data_len;
         if checksum_pos + 4 > data.len() {
@@ -206,14 +205,14 @@ impl DataBlock {
             c.get_u32_le()
         };
         let actual_checksum = crc32fast::hash(&data[..checksum_pos]);
-        
+
         if expected_checksum != actual_checksum {
             return Err(FluxError::ChecksumMismatch {
                 expected: expected_checksum,
                 actual: actual_checksum,
             });
         }
-        
+
         Ok(Self {
             field_name,
             data: block_data,
@@ -231,15 +230,15 @@ mod tests {
     #[test]
     fn test_block_builder() {
         let mut builder = BlockBuilder::new("temperature");
-        
+
         for i in 0..100 {
             builder.add(1000000 + i * 10000, 20.0 + i as f64 * 0.1);
         }
-        
+
         let block = builder.finish();
         assert_eq!(block.count, 100);
         assert_eq!(block.field_name, "temperature");
-        
+
         let points = block.decompress().unwrap();
         assert_eq!(points.len(), 100);
         assert_eq!(points[0].0, 1000000);
@@ -248,18 +247,18 @@ mod tests {
     #[test]
     fn test_block_serialization() {
         let mut builder = BlockBuilder::new("value");
-        
+
         for i in 0..50 {
             builder.add(i * 1000, i as f64);
         }
-        
+
         let block = builder.finish();
         let bytes = block.to_bytes(true);
-        
+
         let restored = DataBlock::from_bytes(&bytes).unwrap();
         assert_eq!(restored.count, 50);
         assert_eq!(restored.field_name, "value");
-        
+
         let points = restored.decompress().unwrap();
         assert_eq!(points.len(), 50);
     }

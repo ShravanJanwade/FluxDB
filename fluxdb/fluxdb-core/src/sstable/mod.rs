@@ -6,14 +6,14 @@
 //! - Bloom filters for existence checks
 
 mod block;
+mod bloom;
 mod builder;
 mod reader;
-mod bloom;
 
-pub use block::{DataBlock, BlockHeader};
+pub use block::{BlockBuilder, BlockHeader, DataBlock};
+pub use bloom::BloomFilter;
 pub use builder::SSTableBuilder;
 pub use reader::SSTableReader;
-pub use bloom::BloomFilter;
 
 use crate::{SeriesKey, Timestamp};
 use std::path::PathBuf;

@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { FluxDBClient, FluxDBError } from '../sdk/javascript/fluxdb.mjs';
+const client = new FluxDBClient(process.env.FLUXDB_TEST_URL, process.env.FLUXDB_TOKEN);
+await client.createDatabase('javascript_sdk');
+const point = {measurement:'cpu',tags:{host:'js'},timestamp:'1789142400000000123',fields:{value:1,integer:{integer:'9223372036854775807'}}};
+await client.write('javascript_sdk',[point]);
+assert.deepEqual((await client.read('javascript_sdk')).points,[point]);
+assert.equal((await client.query('javascript_sdk','SELECT COUNT(*) FROM cpu')).rows[0][0],'1');
+assert.equal((await client.delete('javascript_sdk','cpu',point.timestamp,point.timestamp,point.tags,true)).deleted,1);
+await client.dropDatabase('javascript_sdk');
+await assert.rejects(client.read('javascript_sdk'), error => error instanceof FluxDBError && error.status === 404);
+console.log('PASS: JavaScript SDK CRUD and error handling');

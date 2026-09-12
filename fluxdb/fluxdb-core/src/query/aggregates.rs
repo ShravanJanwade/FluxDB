@@ -4,13 +4,13 @@
 pub trait Accumulator: Send + Sync {
     /// Add a value to the accumulator
     fn add(&mut self, value: f64);
-    
+
     /// Get the current result
     fn result(&self) -> Option<f64>;
-    
+
     /// Reset the accumulator
     fn reset(&mut self);
-    
+
     /// Merge another accumulator into this one
     fn merge(&mut self, other: &dyn Accumulator);
 }
@@ -25,15 +25,15 @@ impl Accumulator for CountAccumulator {
     fn add(&mut self, _value: f64) {
         self.count += 1;
     }
-    
+
     fn result(&self) -> Option<f64> {
         Some(self.count as f64)
     }
-    
+
     fn reset(&mut self) {
         self.count = 0;
     }
-    
+
     fn merge(&mut self, other: &dyn Accumulator) {
         if let Some(count) = other.result() {
             self.count += count as u64;
@@ -53,7 +53,7 @@ impl Accumulator for SumAccumulator {
         self.sum += value;
         self.count += 1;
     }
-    
+
     fn result(&self) -> Option<f64> {
         if self.count > 0 {
             Some(self.sum)
@@ -61,12 +61,12 @@ impl Accumulator for SumAccumulator {
             None
         }
     }
-    
+
     fn reset(&mut self) {
         self.sum = 0.0;
         self.count = 0;
     }
-    
+
     fn merge(&mut self, other: &dyn Accumulator) {
         if let Some(sum) = other.result() {
             self.sum += sum;
@@ -87,7 +87,7 @@ impl Accumulator for MeanAccumulator {
         self.sum += value;
         self.count += 1;
     }
-    
+
     fn result(&self) -> Option<f64> {
         if self.count > 0 {
             Some(self.sum / self.count as f64)
@@ -95,12 +95,12 @@ impl Accumulator for MeanAccumulator {
             None
         }
     }
-    
+
     fn reset(&mut self) {
         self.sum = 0.0;
         self.count = 0;
     }
-    
+
     fn merge(&mut self, _other: &dyn Accumulator) {
         // Note: proper merging of means requires knowing counts
     }
@@ -125,15 +125,15 @@ impl Accumulator for MinAccumulator {
             None => value,
         });
     }
-    
+
     fn result(&self) -> Option<f64> {
         self.min
     }
-    
+
     fn reset(&mut self) {
         self.min = None;
     }
-    
+
     fn merge(&mut self, other: &dyn Accumulator) {
         if let Some(other_min) = other.result() {
             self.add(other_min);
@@ -160,15 +160,15 @@ impl Accumulator for MaxAccumulator {
             None => value,
         });
     }
-    
+
     fn result(&self) -> Option<f64> {
         self.max
     }
-    
+
     fn reset(&mut self) {
         self.max = None;
     }
-    
+
     fn merge(&mut self, other: &dyn Accumulator) {
         if let Some(other_max) = other.result() {
             self.add(other_max);
@@ -197,15 +197,15 @@ impl Accumulator for FirstAccumulator {
             self.value = Some((0, value));
         }
     }
-    
+
     fn result(&self) -> Option<f64> {
         self.value.map(|(_, v)| v)
     }
-    
+
     fn reset(&mut self) {
         self.value = None;
     }
-    
+
     fn merge(&mut self, other: &dyn Accumulator) {
         if let Some(v) = other.result() {
             self.add(v);
@@ -232,15 +232,15 @@ impl Accumulator for LastAccumulator {
     fn add(&mut self, value: f64) {
         self.value = Some((i64::MAX, value));
     }
-    
+
     fn result(&self) -> Option<f64> {
         self.value.map(|(_, v)| v)
     }
-    
+
     fn reset(&mut self) {
         self.value = None;
     }
-    
+
     fn merge(&mut self, other: &dyn Accumulator) {
         if let Some(v) = other.result() {
             self.add(v);
@@ -264,7 +264,7 @@ impl Accumulator for StddevAccumulator {
         let delta2 = value - self.mean;
         self.m2 += delta * delta2;
     }
-    
+
     fn result(&self) -> Option<f64> {
         if self.count > 1 {
             Some((self.m2 / self.count as f64).sqrt())
@@ -272,13 +272,13 @@ impl Accumulator for StddevAccumulator {
             None
         }
     }
-    
+
     fn reset(&mut self) {
         self.count = 0;
         self.mean = 0.0;
         self.m2 = 0.0;
     }
-    
+
     fn merge(&mut self, _other: &dyn Accumulator) {
         // Note: proper merging requires parallel algorithm
     }
@@ -301,12 +301,12 @@ mod tests {
     fn test_min_max_accumulator() {
         let mut min_acc = MinAccumulator::default();
         let mut max_acc = MaxAccumulator::default();
-        
+
         for v in [5.0, 2.0, 8.0, 1.0, 9.0] {
             min_acc.add(v);
             max_acc.add(v);
         }
-        
+
         assert_eq!(min_acc.result(), Some(1.0));
         assert_eq!(max_acc.result(), Some(9.0));
     }

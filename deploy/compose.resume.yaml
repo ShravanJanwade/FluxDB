@@ -1,0 +1,24 @@
+# Run from the repository root with both Compose files (see FREE_DEPLOYMENT.md).
+services:
+  server:
+    environment:
+      # Public AI uses visitors' own session keys; never sponsor anonymous calls.
+      GEMINI_API_KEY: ""
+  gateway:
+    image: caddy:2-alpine
+    environment:
+      DEMO_HOST: ${DEMO_HOST:?Set DEMO_HOST to your DNS hostname}
+      FLUXDB_TOKEN: ${FLUXDB_TOKEN:?Set a random FLUXDB_TOKEN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile.resume:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - studio
+    restart: unless-stopped
+volumes:
+  caddy-data:
+  caddy-config:

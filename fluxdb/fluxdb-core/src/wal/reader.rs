@@ -5,7 +5,6 @@ use crate::{FluxError, Result};
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::PathBuf;
-use tracing::{info, warn};
 
 /// WAL reader for recovering entries after crash
 pub struct WalReader {
@@ -24,20 +23,7 @@ impl WalReader {
         let mut entries = Vec::new();
 
         for segment_path in segments {
-            match self.read_segment(&segment_path) {
-                Ok(segment_entries) => {
-                    info!(
-                        "Recovered {} entries from {:?}",
-                        segment_entries.len(),
-                        segment_path
-                    );
-                    entries.extend(segment_entries);
-                }
-                Err(e) => {
-                    warn!("Error reading segment {:?}: {}", segment_path, e);
-                    // Continue with other segments
-                }
-            }
+            entries.extend(self.read_segment(&segment_path)?);
         }
 
         Ok(entries)
@@ -51,10 +37,7 @@ impl WalReader {
         for segment_path in segments {
             if let Some(segment_id) = Self::parse_segment_id(&segment_path) {
                 if segment_id >= start_segment {
-                    match self.read_segment(&segment_path) {
-                        Ok(segment_entries) => entries.extend(segment_entries),
-                        Err(e) => warn!("Error reading segment {:?}: {}", segment_path, e),
-                    }
+                    entries.extend(self.read_segment(&segment_path)?);
                 }
             }
         }
@@ -103,20 +86,20 @@ impl WalReader {
                     entries.push(entry);
                     offset += bytes_read;
                 }
-                Err(FluxError::ChecksumMismatch { .. }) => {
-                    // Corrupted entry, skip rest of segment
-                    warn!(
-                        "Checksum mismatch at offset {} in {:?}, truncating",
-                        offset, path
-                    );
-                    break;
-                }
                 Err(FluxError::InvalidFormat(msg)) if msg == "Entry too short" => {
-                    // Incomplete entry at end (crash during write)
+                    // Discard only an incomplete tail, never a checksum failure.
+                    std::fs::OpenOptions::new()
+                        .write(true)
+                        .open(path)?
+                        .set_len(offset as u64)?;
                     break;
                 }
                 Err(FluxError::InvalidFormat(msg)) if msg == "Incomplete entry" => {
-                    // Incomplete entry at end (crash during write)
+                    // Discard only an incomplete tail, never a checksum failure.
+                    std::fs::OpenOptions::new()
+                        .write(true)
+                        .open(path)?
+                        .set_len(offset as u64)?;
                     break;
                 }
                 Err(e) => {

@@ -1,0 +1,1005 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FluxDB API",
+    "version": "0.1.0",
+    "description": "Single-node time-series database. JSON timestamps and i64 fields use decimal strings. The UI Developer resources page documents examples, SQL support and limitations."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8086"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "summary": "Health status",
+        "operationId": "get__api_v1_health",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/databases": {
+      "get": {
+        "summary": "List databases",
+        "operationId": "get__api_v1_databases",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          }
+        }
+      }
+    },
+    "/api/v1/stats": {
+      "get": {
+        "summary": "Storage statistics",
+        "operationId": "get__api_v1_stats",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          }
+        }
+      }
+    },
+    "/api/v1/telemetry": {
+      "get": {
+        "summary": "Recent request samples and uptime",
+        "operationId": "get__api_v1_telemetry",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          }
+        }
+      }
+    },
+    "/api/v1/openapi.json": {
+      "get": {
+        "summary": "OpenAPI document",
+        "operationId": "get__api_v1_openapi.json",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          }
+        }
+      }
+    },
+    "/api/v1/databases/{name}": {
+      "post": {
+        "summary": "Create database",
+        "operationId": "post__api_v1_databases_name",
+        "responses": {
+          "201": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          },
+          "409": {
+            "description": "Database exists"
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Permanently delete database",
+        "operationId": "delete__api_v1_databases_name",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/databases/{name}/points": {
+      "post": {
+        "summary": "Write or merge fields by point identity",
+        "operationId": "post__api_v1_databases_name_points",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "points"
+                ],
+                "properties": {
+                  "points": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 10000,
+                    "items": {
+                      "$ref": "#/components/schemas/Point"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      },
+      "get": {
+        "summary": "Read live points, newest first",
+        "operationId": "get__api_v1_databases_name_points",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          },
+          {
+            "name": "measurement",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Exact measurement filter"
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Inclusive ns lower bound"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Inclusive ns upper bound"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Default 100, clamped to 1\u20131000"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Default 0"
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Permanently delete an inclusive time range",
+        "operationId": "delete__api_v1_databases_name_points",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "measurement",
+                  "start",
+                  "end"
+                ],
+                "properties": {
+                  "measurement": {
+                    "type": "string"
+                  },
+                  "start": {
+                    "type": "string"
+                  },
+                  "end": {
+                    "type": "string"
+                  },
+                  "tags": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "exact": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/databases/{name}/query": {
+      "post": {
+        "summary": "Execute one SELECT in the supported SQL subset",
+        "operationId": "post__api_v1_databases_name_query",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "query"
+                ],
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "maxLength": 32768
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/databases/{name}/schema": {
+      "get": {
+        "summary": "Infer schema from live data",
+        "operationId": "get__api_v1_databases_name_schema",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/databases/{name}/retention": {
+      "get": {
+        "summary": "Get retention seconds; zero means unlimited",
+        "operationId": "get__api_v1_databases_name_retention",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      },
+      "put": {
+        "summary": "Set retention; expired data will be permanently deleted",
+        "operationId": "put__api_v1_databases_name_retention",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "seconds"
+                ],
+                "properties": {
+                  "seconds": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 315360000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/databases/{name}/export": {
+      "get": {
+        "summary": "Export a consistent logical snapshot",
+        "operationId": "get__api_v1_databases_name_export",
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/databases/{name}/flush": {
+      "post": {
+        "summary": "Flush database",
+        "operationId": "post__api_v1_databases_name_flush",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/databases/{name}/compact": {
+      "post": {
+        "summary": "Compact database",
+        "operationId": "post__api_v1_databases_name_compact",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Database not found"
+          },
+          "413": {
+            "description": "Body exceeds 2 MiB"
+          },
+          "422": {
+            "description": "Invalid JSON shape"
+          },
+          "500": {
+            "description": "Storage or internal error"
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,64}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/assistant/config": {
+      "get": {
+        "summary": "Assistant configuration without credentials",
+        "operationId": "assistant_config",
+        "responses": {
+          "200": {
+            "description": "Provider, configured flag, default_model, execution limits; no secret values"
+          },
+          "401": {
+            "description": "Invalid FluxDB bearer token"
+          }
+        }
+      }
+    },
+    "/api/v1/assistant/chat": {
+      "post": {
+        "summary": "Run a bounded Gemini tool loop; mutations are proposals only",
+        "operationId": "assistant_chat",
+        "parameters": [
+          {
+            "name": "x-gemini-api-key",
+            "in": "header",
+            "required": false,
+            "description": "Optional session provider key overriding GEMINI_API_KEY; never persisted",
+            "schema": {
+              "type": "string",
+              "writeOnly": true
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "messages"
+                ],
+                "properties": {
+                  "database": {
+                    "type": "string"
+                  },
+                  "page": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "model": {
+                    "type": "string",
+                    "description": "Gemini model ID; defaults to GEMINI_MODEL"
+                  },
+                  "allow_read_data": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "messages": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 16,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "role",
+                        "text"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "user",
+                            "assistant"
+                          ]
+                        },
+                        "text": {
+                          "type": "string",
+                          "maxLength": 16000
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "example": {
+                "database": "observability",
+                "page": "Query workspace",
+                "messages": [
+                  {
+                    "role": "user",
+                    "text": "Inspect my schema and propose a query"
+                  }
+                ],
+                "allow_read_data": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "reply, actions [{operation,database,payload,explanation}], steps [{tool,status,detail}], model. Actions must be explicitly executed using the existing database endpoints."
+          },
+          "400": {
+            "description": "Invalid scope, history, or model"
+          },
+          "401": {
+            "description": "Invalid FluxDB token"
+          },
+          "404": {
+            "description": "Database missing"
+          },
+          "429": {
+            "description": "Assistant concurrency or Gemini quota limit"
+          },
+          "502": {
+            "description": "Provider connection, model, permissions, or response error"
+          },
+          "503": {
+            "description": "No Gemini API key configured"
+          },
+          "504": {
+            "description": "100-second turn deadline exceeded"
+          }
+        }
+      }
+    },
+    "/api/v1/assistant/models": {
+      "get": {
+        "summary": "Check provider key and list Gemini generateContent model IDs",
+        "operationId": "assistant_models",
+        "parameters": [
+          {
+            "name": "x-gemini-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "writeOnly": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "models: array of {id, name}; availability does not guarantee function-calling support or quota"
+          },
+          "401": {
+            "description": "Invalid FluxDB token"
+          },
+          "429": {
+            "description": "Assistant busy"
+          },
+          "502": {
+            "description": "Provider key, permissions, or network failure"
+          },
+          "503": {
+            "description": "Gemini key not configured"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Point": {
+        "type": "object",
+        "required": [
+          "measurement",
+          "timestamp",
+          "fields"
+        ],
+        "properties": {
+          "measurement": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "timestamp": {
+            "type": "string",
+            "pattern": "^-?[0-9]+$",
+            "description": "Signed i64 Unix nanoseconds; never a JSON number"
+          },
+          "tags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "fields": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "integer"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "integer": {
+                      "type": "string",
+                      "pattern": "^-?[0-9]+$"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

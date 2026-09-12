@@ -1,17 +1,18 @@
 //! SSTable reader for querying data
 
 use super::{BloomFilter, DataBlock, SSTableMeta, FORMAT_VERSION};
-use crate::{DataPoint, FieldValue, Fields, Result, FluxError, SeriesKey, TimeRange, Timestamp};
+use crate::{DataPoint, FieldValue, Fields, FluxError, Result, SeriesKey, TimeRange, Timestamp};
 use bytes::Buf;
+use parking_lot::RwLock;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::PathBuf;
 use std::sync::Arc;
-use parking_lot::RwLock;
 
 /// SSTable reader
 pub struct SSTableReader {
+    typed_points: Option<Vec<crate::Point>>,
     path: PathBuf,
     meta: SSTableMeta,
     index: Vec<IndexEntry>,
@@ -68,6 +69,54 @@ impl SSTableReader {
     pub fn open(path: PathBuf) -> Result<Self> {
         let mut file = File::open(&path)?;
         let file_size = file.metadata()?.len();
+        let id = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .and_then(|s| s.strip_prefix("sst_"))
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
+        let mut magic = [0; 4];
+        file.read_exact(&mut magic)?;
+        if &magic == b"FLX2" {
+            let mut checksum = [0; 4];
+            file.read_exact(&mut checksum)?;
+            let mut compressed = Vec::new();
+            file.read_to_end(&mut compressed)?;
+            let expected = u32::from_le_bytes(checksum);
+            let actual = crc32fast::hash(&compressed);
+            if expected != actual {
+                return Err(FluxError::ChecksumMismatch { expected, actual });
+            }
+            let payload = lz4_flex::decompress_size_prepended(&compressed)
+                .map_err(|e| FluxError::InvalidFormat(e.to_string()))?;
+            let points: Vec<crate::Point> = bincode::deserialize(&payload)
+                .map_err(|e| FluxError::InvalidFormat(e.to_string()))?;
+            let meta = SSTableMeta {
+                path: path.clone(),
+                id,
+                level: 0,
+                entry_count: points.len(),
+                file_size,
+                min_timestamp: points.iter().map(|p| p.data.timestamp).min().unwrap_or(0),
+                max_timestamp: points.iter().map(|p| p.data.timestamp).max().unwrap_or(0),
+                min_key: points
+                    .first()
+                    .map(|p| p.key.clone())
+                    .unwrap_or_else(|| SeriesKey::new("")),
+                max_key: points
+                    .last()
+                    .map(|p| p.key.clone())
+                    .unwrap_or_else(|| SeriesKey::new("")),
+            };
+            return Ok(Self {
+                typed_points: Some(points),
+                path,
+                meta,
+                index: vec![],
+                bloom_filter: BloomFilter::new(1, 10),
+                cache: Arc::new(RwLock::new(BlockCache::new(0))),
+            });
+        }
 
         // Read footer
         file.seek(SeekFrom::End(-36))?;
@@ -79,10 +128,12 @@ impl SSTableReader {
         let index_size = cursor.get_u64_le();
         let bloom_offset = cursor.get_u64_le();
         let bloom_size = cursor.get_u64_le();
-        
+
         // Verify magic
         let mut magic = [0u8; 4];
-        cursor.read_exact(&mut magic).map_err(|e| FluxError::Io(e))?;
+        cursor
+            .read_exact(&mut magic)
+            .map_err(|e| FluxError::Io(e))?;
         if &magic != b"FLUX" {
             return Err(FluxError::InvalidFormat("Invalid SSTable magic".into()));
         }
@@ -91,14 +142,16 @@ impl SSTableReader {
         file.seek(SeekFrom::Start(0))?;
         let mut header = [0u8; 32];
         file.read_exact(&mut header)?;
-        
+
         let mut cursor = std::io::Cursor::new(&header);
         let mut magic = [0u8; 4];
-        cursor.read_exact(&mut magic).map_err(|e| FluxError::Io(e))?;
+        cursor
+            .read_exact(&mut magic)
+            .map_err(|e| FluxError::Io(e))?;
         if &magic != b"FLUX" {
             return Err(FluxError::InvalidFormat("Invalid SSTable header".into()));
         }
-        
+
         let version = cursor.get_u32_le();
         if version != FORMAT_VERSION {
             return Err(FluxError::InvalidFormat(format!(
@@ -106,7 +159,7 @@ impl SSTableReader {
                 version
             )));
         }
-        
+
         let entry_count = cursor.get_u64_le() as usize;
         let min_timestamp = cursor.get_i64_le();
         let max_timestamp = cursor.get_i64_le();
@@ -134,7 +187,7 @@ impl SSTableReader {
 
         let meta = SSTableMeta {
             path: path.clone(),
-            id: 0, // Will be set by caller
+            id,
             level: 0,
             entry_count,
             file_size,
@@ -145,6 +198,7 @@ impl SSTableReader {
         };
 
         Ok(Self {
+            typed_points: None,
             path,
             meta,
             index,
@@ -160,15 +214,23 @@ impl SSTableReader {
 
     /// Check if SSTable may contain a series (bloom filter check)
     pub fn may_contain(&self, series_key: &SeriesKey) -> bool {
+        if let Some(points) = &self.typed_points {
+            return points.iter().any(|p| &p.key == series_key);
+        }
         self.bloom_filter.may_contain(&series_key.canonical())
     }
 
     /// Query data points for a series in a time range
-    pub fn query(
-        &self,
-        series_key: &SeriesKey,
-        time_range: &TimeRange,
-    ) -> Result<Vec<DataPoint>> {
+    pub fn query(&self, series_key: &SeriesKey, time_range: &TimeRange) -> Result<Vec<DataPoint>> {
+        if let Some(points) = &self.typed_points {
+            let start = points
+                .partition_point(|p| (&p.key, p.data.timestamp) < (series_key, time_range.start));
+            return Ok(points[start..]
+                .iter()
+                .take_while(|p| &p.key == series_key && p.data.timestamp <= time_range.end)
+                .map(|p| p.data.clone())
+                .collect());
+        }
         // Quick checks
         if !self.meta.overlaps_time(time_range.start, time_range.end) {
             return Ok(vec![]);
@@ -213,6 +275,24 @@ impl SSTableReader {
         Ok(results)
     }
 
+    pub fn all_points(&self) -> Result<Vec<crate::Point>> {
+        if let Some(points) = &self.typed_points {
+            return Ok(points.clone());
+        }
+        let keys: std::collections::BTreeSet<_> = self
+            .index
+            .iter()
+            .map(|e| Self::parse_series_key(&e.series_key))
+            .collect();
+        let mut points = Vec::new();
+        for key in keys {
+            for data in self.query(&key, &TimeRange::new(i64::MIN, i64::MAX))? {
+                points.push(crate::Point::new(key.clone(), data));
+            }
+        }
+        Ok(points)
+    }
+
     /// Query a specific field
     pub fn query_field(
         &self,
@@ -220,6 +300,18 @@ impl SSTableReader {
         field_name: &str,
         time_range: &TimeRange,
     ) -> Result<Vec<(Timestamp, f64)>> {
+        if self.typed_points.is_some() {
+            return Ok(self
+                .query(series_key, time_range)?
+                .into_iter()
+                .filter_map(|p| {
+                    p.fields
+                        .get(field_name)
+                        .and_then(|v| v.as_f64())
+                        .map(|v| (p.timestamp, v))
+                })
+                .collect());
+        }
         if !self.meta.overlaps_time(time_range.start, time_range.end) {
             return Ok(vec![]);
         }
@@ -277,13 +369,16 @@ impl SSTableReader {
         // Cache the block
         {
             let mut cache = self.cache.write();
-            cache.insert(offset, DataBlock {
-                field_name: block.field_name.clone(),
-                data: block.data.clone(),
-                count: block.count,
-                first_timestamp: block.first_timestamp,
-                last_timestamp: block.last_timestamp,
-            });
+            cache.insert(
+                offset,
+                DataBlock {
+                    field_name: block.field_name.clone(),
+                    data: block.data.clone(),
+                    count: block.count,
+                    first_timestamp: block.first_timestamp,
+                    last_timestamp: block.last_timestamp,
+                },
+            );
         }
 
         Ok(block)
@@ -327,13 +422,15 @@ impl SSTableReader {
 
     fn parse_bloom(data: &[u8]) -> Result<BloomFilter> {
         if data.len() < 5 {
-            return Err(FluxError::InvalidFormat("Bloom filter data too short".into()));
+            return Err(FluxError::InvalidFormat(
+                "Bloom filter data too short".into(),
+            ));
         }
 
         let mut cursor = std::io::Cursor::new(data);
         let size = cursor.get_u32_le() as usize;
         let num_hashes = cursor.get_u8() as usize;
-        
+
         let pos = cursor.position() as usize;
         let bloom_data = data[pos..pos + size].to_vec();
 

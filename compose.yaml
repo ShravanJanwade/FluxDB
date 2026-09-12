@@ -1,0 +1,28 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      FLUXDB_ADDR: 0.0.0.0:8086
+      FLUXDB_DATA_DIR: /data
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      FLUXDB_TOKEN: ${FLUXDB_TOKEN:?Set FLUXDB_TOKEN in the root .env file}
+      FLUXDB_CORS_ORIGINS: ${FLUXDB_CORS_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
+    volumes:
+      - fluxdb-data:/data
+    restart: unless-stopped
+    stop_grace_period: 60s
+  studio:
+    build:
+      context: .
+      dockerfile: fluxdb-studio/Dockerfile
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  fluxdb-data:

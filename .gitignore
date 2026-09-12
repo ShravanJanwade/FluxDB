@@ -38,3 +38,11 @@ yarn-error.log*
 *.db
 tmp/
 jira_data.csv
+
+# Local database state and verification output
+fluxdb/data/
+.runtime/
+.sites-runtime/
+fluxdb-studio/dist-electron/
+__pycache__/
+*.py[cod]

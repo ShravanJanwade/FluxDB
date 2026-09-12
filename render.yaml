@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: fluxdb-demo
+    runtime: docker
+    plan: free
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: FLUXDB_TOKEN
+        generateValue: true
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash

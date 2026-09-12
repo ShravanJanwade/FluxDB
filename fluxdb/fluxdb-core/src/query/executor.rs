@@ -8,11 +8,11 @@
 //! - OFFSET for pagination
 
 use super::{
-    planner::{Aggregation, AdvancedFilter, FieldSelection, QueryPlan, SortOrder},
+    planner::{FieldSelection, QueryPlan},
     AggregateFunc, CompareOp, QueryResult, QueryRow, QueryValue,
 };
-use crate::{DataPoint, FieldValue, Result, SeriesKey, TimeRange};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use crate::{DataPoint, FieldValue, Result, SeriesKey};
+use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
 /// Query executor
@@ -26,8 +26,16 @@ impl QueryExecutor {
         // Filter by basic conditions
         let filtered: Vec<_> = data
             .into_iter()
-            .filter(|(key, point)| Self::matches_basic_filters(plan, key, point))
-            .filter(|(key, point)| Self::matches_advanced_filters(plan, key, point))
+            .filter(|(key, point)| {
+                plan.predicate
+                    .as_ref()
+                    .map(|w| {
+                        w.conditions
+                            .iter()
+                            .all(|c| Self::matches(c, key, point) == Some(true))
+                    })
+                    .unwrap_or(true)
+            })
             .collect();
 
         // Group and aggregate if needed
@@ -47,132 +55,128 @@ impl QueryExecutor {
         })
     }
 
-    fn matches_basic_filters(plan: &QueryPlan, key: &SeriesKey, point: &DataPoint) -> bool {
-        // Check tag filters
-        for (tag_name, tag_value) in &plan.tag_filters {
-            if key.tags.get(tag_name) != Some(tag_value) {
-                return false;
+    pub fn matches(c: &super::Condition, key: &SeriesKey, point: &DataPoint) -> Option<bool> {
+        use super::Condition::*;
+        let value = |field: &str| -> Option<QueryValue> {
+            if field == "time" {
+                return Some(QueryValue::Integer(point.timestamp));
             }
-        }
-
-        // Check time range
-        if !plan.time_range.contains(point.timestamp) {
-            return false;
-        }
-
-        // Check field filters
-        for filter in &plan.field_filters {
-            if let Some(field_val) = point.fields.get(&filter.field) {
-                if let Some(val) = field_val.as_f64() {
-                    let passes = match filter.op {
-                        CompareOp::Eq => (val - filter.value).abs() < f64::EPSILON,
-                        CompareOp::Ne => (val - filter.value).abs() >= f64::EPSILON,
-                        CompareOp::Lt => val < filter.value,
-                        CompareOp::Le => val <= filter.value,
-                        CompareOp::Gt => val > filter.value,
-                        CompareOp::Ge => val >= filter.value,
-                        _ => true, // Other ops handled differently
-                    };
-                    if !passes {
-                        return false;
-                    }
-                }
+            point
+                .fields
+                .get(field)
+                .map(Self::field_to_query_value)
+                .or_else(|| key.tags.get(field).cloned().map(QueryValue::String))
+        };
+        let compare = |a: &QueryValue, op: CompareOp, b: &QueryValue| -> Option<bool> {
+            let order = match (a, b) {
+                (QueryValue::String(a), QueryValue::String(b)) => Some(a.cmp(b)),
+                (QueryValue::Boolean(a), QueryValue::Boolean(b)) => Some(a.cmp(b)),
+                (QueryValue::Integer(a), QueryValue::Integer(b)) => Some(a.cmp(b)),
+                _ => a.as_f64()?.partial_cmp(&b.as_f64()?),
+            }?;
+            Some(match op {
+                CompareOp::Eq => order.is_eq(),
+                CompareOp::Ne => !order.is_eq(),
+                CompareOp::Lt => order.is_lt(),
+                CompareOp::Le => !order.is_gt(),
+                CompareOp::Gt => order.is_gt(),
+                CompareOp::Ge => !order.is_lt(),
+                _ => false,
+            })
+        };
+        match c {
+            TimeRange(r) => Some(r.contains(point.timestamp)),
+            TagEquals { tag, value: v } => {
+                compare(&value(tag)?, CompareOp::Eq, &QueryValue::String(v.clone()))
             }
-        }
-
-        true
-    }
-
-    fn matches_advanced_filters(plan: &QueryPlan, _key: &SeriesKey, point: &DataPoint) -> bool {
-        for filter in &plan.advanced_filters {
-            match filter {
-                AdvancedFilter::In { field, values, negated } => {
-                    if let Some(field_val) = point.fields.get(field) {
-                        let query_val = Self::field_to_query_value(field_val);
-                        let found = values.contains(&query_val);
-                        if *negated && found {
-                            return false;
-                        }
-                        if !*negated && !found {
-                            return false;
-                        }
-                    }
-                }
-                AdvancedFilter::Between { field, low, high, negated } => {
-                    if let Some(field_val) = point.fields.get(field) {
-                        if let Some(val) = field_val.as_f64() {
-                            let low_f = Self::query_value_to_f64(low).unwrap_or(f64::NEG_INFINITY);
-                            let high_f = Self::query_value_to_f64(high).unwrap_or(f64::INFINITY);
-                            let in_range = val >= low_f && val <= high_f;
-                            if *negated && in_range {
-                                return false;
-                            }
-                            if !*negated && !in_range {
-                                return false;
-                            }
-                        }
-                    }
-                }
-                AdvancedFilter::Like { field, pattern, negated } => {
-                    if let Some(field_val) = point.fields.get(field) {
-                        if let FieldValue::String(s) = field_val {
-                            let matches = Self::matches_like_pattern(s, pattern);
-                            if *negated && matches {
-                                return false;
-                            }
-                            if !*negated && !matches {
-                                return false;
-                            }
-                        }
-                    }
-                }
-                AdvancedFilter::IsNull { field, negated } => {
-                    let is_null = point.fields.get(field).is_none();
-                    if *negated && is_null {
-                        return false;
-                    }
-                    if !*negated && !is_null {
-                        return false;
-                    }
-                }
-                AdvancedFilter::StringCompare { field, op, value } => {
-                    if let Some(FieldValue::String(s)) = point.fields.get(field) {
-                        let passes = match op {
-                            CompareOp::Eq => s == value,
-                            CompareOp::Ne => s != value,
-                            CompareOp::Lt => s < value,
-                            CompareOp::Le => s <= value,
-                            CompareOp::Gt => s > value,
-                            CompareOp::Ge => s >= value,
-                            _ => true,
-                        };
-                        if !passes {
-                            return false;
-                        }
-                    }
+            ValueCompare {
+                field,
+                op,
+                value: v,
+            } => compare(&value(field)?, *op, v),
+            FieldCompare {
+                field,
+                op,
+                value: v,
+            } => compare(&value(field)?, *op, &QueryValue::Float(*v)),
+            StringCompare {
+                field,
+                op,
+                value: v,
+            } => compare(&value(field)?, *op, &QueryValue::String(v.clone())),
+            In {
+                field,
+                values,
+                negated,
+            } => {
+                let v = value(field)?;
+                if values
+                    .iter()
+                    .any(|x| compare(&v, CompareOp::Eq, x) == Some(true))
+                {
+                    Some(!*negated)
+                } else if values
+                    .iter()
+                    .any(|x| compare(&v, CompareOp::Eq, x).is_none())
+                {
+                    None
+                } else {
+                    Some(*negated)
                 }
             }
-        }
-        true
-    }
-
-    fn matches_like_pattern(s: &str, pattern: &str) -> bool {
-        // Simple LIKE pattern matching with % and _ wildcards
-        let regex_pattern = pattern
-            .replace('%', ".*")
-            .replace('_', ".");
-        
-        // Try to match with regex
-        regex::Regex::new(&format!("^{}$", regex_pattern))
-            .map(|re| re.is_match(s))
-            .unwrap_or_else(|_| s.contains(&pattern.replace('%', "").replace('_', "")))
-    }
-
-    fn query_value_to_f64(val: &QueryValue) -> Option<f64> {
-        match val {
-            QueryValue::Float(f) => Some(*f),
-            QueryValue::Integer(i) => Some(*i as f64),
+            Between {
+                field,
+                low,
+                high,
+                negated,
+            } => {
+                let v = value(field)?;
+                Some(
+                    (compare(&v, CompareOp::Ge, low)? && compare(&v, CompareOp::Le, high)?)
+                        != *negated,
+                )
+            }
+            Like {
+                field,
+                pattern,
+                negated,
+            } => {
+                let QueryValue::String(v) = value(field)? else {
+                    return None;
+                };
+                let pattern = regex::escape(pattern).replace('%', ".*").replace('_', ".");
+                Some(
+                    regex::Regex::new(&format!("(?s)^{}$", pattern))
+                        .ok()?
+                        .is_match(&v)
+                        != *negated,
+                )
+            }
+            IsNull { field, negated } => Some(value(field).is_none() != *negated),
+            And(a, b) => match (Self::matches(a, key, point), Self::matches(b, key, point)) {
+                (Some(false), _) | (_, Some(false)) => Some(false),
+                (Some(true), Some(true)) => Some(true),
+                _ => None,
+            },
+            Or(a, b) => match (Self::matches(a, key, point), Self::matches(b, key, point)) {
+                (Some(true), _) | (_, Some(true)) => Some(true),
+                (Some(false), Some(false)) => Some(false),
+                _ => None,
+            },
+            Not(a) => Self::matches(a, key, point).map(|v| !v),
             _ => None,
+        }
+    }
+
+    fn value_order(a: &QueryValue, b: &QueryValue) -> std::cmp::Ordering {
+        match (a, b) {
+            (QueryValue::Integer(a), QueryValue::Integer(b)) => a.cmp(b),
+            (QueryValue::String(a), QueryValue::String(b)) => a.cmp(b),
+            (QueryValue::Boolean(a), QueryValue::Boolean(b)) => a.cmp(b),
+            _ => a
+                .as_f64()
+                .partial_cmp(&b.as_f64())
+                .unwrap_or(std::cmp::Ordering::Equal),
         }
     }
 
@@ -180,9 +184,37 @@ impl QueryExecutor {
         plan: &QueryPlan,
         data: Vec<(SeriesKey, DataPoint)>,
     ) -> Result<(Vec<String>, Vec<QueryRow>)> {
-        // Determine columns
-        let mut columns = vec!["time".to_string(), "series".to_string()];
-        
+        let mut data = data;
+        if let Some(sort) = &plan.sort {
+            data.sort_by(|(ak, ap), (bk, bp)| {
+                let value = |key: &SeriesKey, p: &DataPoint| {
+                    p.fields
+                        .get(&sort.field)
+                        .map(Self::field_to_query_value)
+                        .or_else(|| key.tags.get(&sort.field).cloned().map(QueryValue::String))
+                        .unwrap_or(QueryValue::Null)
+                };
+                let order = if sort.field == "time" {
+                    ap.timestamp.cmp(&bp.timestamp)
+                } else if sort.field == "series" {
+                    ak.cmp(bk)
+                } else {
+                    Self::value_order(&value(ak, ap), &value(bk, bp))
+                };
+                if sort.descending {
+                    order.reverse()
+                } else {
+                    order
+                }
+            });
+        }
+        let all = matches!(plan.fields, FieldSelection::All);
+        let mut columns = if all {
+            vec!["time".to_string(), "series".to_string()]
+        } else {
+            Vec::new()
+        };
+
         let field_names: Vec<String> = match &plan.fields {
             FieldSelection::All => {
                 // Collect all unique field names
@@ -199,7 +231,7 @@ impl QueryExecutor {
                 fields.iter().map(|(_, f)| f.clone()).collect()
             }
         };
-        
+
         columns.extend(field_names.clone());
 
         // Build rows
@@ -209,9 +241,16 @@ impl QueryExecutor {
                 let values: Vec<QueryValue> = field_names
                     .iter()
                     .map(|name| {
+                        if name == "time" {
+                            return QueryValue::Integer(dp.timestamp);
+                        }
+                        if name == "series" {
+                            return QueryValue::String(key.canonical());
+                        }
                         dp.fields
                             .get(name)
                             .map(|v| Self::field_to_query_value(v))
+                            .or_else(|| key.tags.get(name).cloned().map(QueryValue::String))
                             .unwrap_or(QueryValue::Null)
                     })
                     .collect();
@@ -233,28 +272,6 @@ impl QueryExecutor {
             });
         }
 
-        // Sort if needed
-        if let Some(sort) = &plan.sort {
-            let field_idx = field_names.iter().position(|n| n == &sort.field);
-            if sort.field == "time" {
-                if sort.descending {
-                    rows.sort_by(|a, b| b.time.cmp(&a.time));
-                } else {
-                    rows.sort_by(|a, b| a.time.cmp(&b.time));
-                }
-            } else if let Some(idx) = field_idx {
-                rows.sort_by(|a, b| {
-                    let av = a.values.get(idx).and_then(|v| v.as_f64());
-                    let bv = b.values.get(idx).and_then(|v| v.as_f64());
-                    if sort.descending {
-                        bv.partial_cmp(&av).unwrap_or(std::cmp::Ordering::Equal)
-                    } else {
-                        av.partial_cmp(&bv).unwrap_or(std::cmp::Ordering::Equal)
-                    }
-                });
-            }
-        }
-
         // Apply offset
         if let Some(offset) = plan.offset {
             if offset < rows.len() {
@@ -269,6 +286,12 @@ impl QueryExecutor {
             rows.truncate(limit);
         }
 
+        if !all {
+            for row in &mut rows {
+                row.time = None;
+                row.series = None;
+            }
+        }
         Ok((columns, rows))
     }
 
@@ -281,7 +304,9 @@ impl QueryExecutor {
 
         for (key, point) in data {
             let group_key = GroupKey {
-                time_bucket: plan.time_bucket.map(|b| (point.timestamp / b) * b),
+                time_bucket: plan
+                    .time_bucket
+                    .map(|b| point.timestamp.div_euclid(b).saturating_mul(b)),
                 tags: plan
                     .group_by_tags
                     .iter()
@@ -292,6 +317,15 @@ impl QueryExecutor {
             groups.entry(group_key).or_default().push((key, point));
         }
 
+        if groups.is_empty() && plan.time_bucket.is_none() && plan.group_by_tags.is_empty() {
+            groups.insert(
+                GroupKey {
+                    time_bucket: None,
+                    tags: vec![],
+                },
+                vec![],
+            );
+        }
         // Build columns
         let mut columns = Vec::new();
         if plan.time_bucket.is_some() {
@@ -329,7 +363,33 @@ impl QueryExecutor {
                         .filter_map(|v| v.as_f64())
                         .collect();
 
-                    let result = Self::compute_aggregate(agg.function, &field_values, &points);
+                    let result = if agg.function == AggregateFunc::Count {
+                        QueryValue::Integer(if agg.field == "*" {
+                            points.len()
+                        } else {
+                            points
+                                .iter()
+                                .filter(|(_, p)| p.fields.get(&agg.field).is_some())
+                                .count()
+                        } as i64)
+                    } else if matches!(agg.function, AggregateFunc::First | AggregateFunc::Last) {
+                        let mut present: Vec<_> = points
+                            .iter()
+                            .filter(|(_, p)| p.fields.get(&agg.field).is_some())
+                            .collect();
+                        present.sort_by_key(|(_, p)| p.timestamp);
+                        let point = if agg.function == AggregateFunc::First {
+                            present.first()
+                        } else {
+                            present.last()
+                        };
+                        point
+                            .and_then(|(_, p)| p.fields.get(&agg.field))
+                            .map(Self::field_to_query_value)
+                            .unwrap_or(QueryValue::Null)
+                    } else {
+                        Self::compute_aggregate(agg.function, &field_values, &points)
+                    };
                     values.push(result);
                 }
 
@@ -341,9 +401,25 @@ impl QueryExecutor {
             })
             .collect();
 
-        // Sort by time if time bucketing
-        if plan.time_bucket.is_some() {
-            rows.sort_by(|a, b| a.time.cmp(&b.time));
+        if let Some(sort) = &plan.sort {
+            if sort.field == "time" {
+                rows.sort_by_key(|r| r.time);
+            } else if let Some(index) = columns
+                .iter()
+                .filter(|c| *c != "time" || plan.time_bucket.is_none())
+                .position(|c| c == &sort.field)
+            {
+                rows.sort_by(|a, b| Self::value_order(&a.values[index], &b.values[index]));
+            }
+            if sort.descending {
+                rows.reverse();
+            }
+        } else {
+            rows.sort_by(|a, b| {
+                a.time
+                    .cmp(&b.time)
+                    .then(format!("{:?}", a.values).cmp(&format!("{:?}", b.values)))
+            });
         }
 
         // Apply offset
@@ -378,12 +454,12 @@ impl QueryExecutor {
             AggregateFunc::Mean => {
                 QueryValue::Float(values.iter().sum::<f64>() / values.len() as f64)
             }
-            AggregateFunc::Min => QueryValue::Float(
-                values.iter().cloned().fold(f64::INFINITY, f64::min),
-            ),
-            AggregateFunc::Max => QueryValue::Float(
-                values.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
-            ),
+            AggregateFunc::Min => {
+                QueryValue::Float(values.iter().cloned().fold(f64::INFINITY, f64::min))
+            }
+            AggregateFunc::Max => {
+                QueryValue::Float(values.iter().cloned().fold(f64::NEG_INFINITY, f64::max))
+            }
             AggregateFunc::First => {
                 // Get value with earliest timestamp
                 points
@@ -406,14 +482,14 @@ impl QueryExecutor {
             }
             AggregateFunc::Stddev => {
                 let mean = values.iter().sum::<f64>() / values.len() as f64;
-                let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>()
-                    / values.len() as f64;
+                let variance =
+                    values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
                 QueryValue::Float(variance.sqrt())
             }
             AggregateFunc::Variance => {
                 let mean = values.iter().sum::<f64>() / values.len() as f64;
-                let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>()
-                    / values.len() as f64;
+                let variance =
+                    values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
                 QueryValue::Float(variance)
             }
             AggregateFunc::Median => {

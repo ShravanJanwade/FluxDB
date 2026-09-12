@@ -5,13 +5,13 @@
 //!
 //! Achieves ~1.37 bytes per data point (vs 16 bytes raw).
 
-mod encoder;
-mod decoder;
 mod bitstream;
+mod decoder;
+mod encoder;
 
-pub use encoder::GorillaEncoder;
-pub use decoder::GorillaDecoder;
 pub use bitstream::{BitReader, BitWriter};
+pub use decoder::GorillaDecoder;
+pub use encoder::GorillaEncoder;
 
 /// Compressed block of time-series data
 #[derive(Debug, Clone)]

@@ -1,16 +1,17 @@
-//! HTTP API endpoints
+mod assistant;
+mod console;
+// HTTP API endpoints
 
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    response::{IntoResponse, Json, Response},
+    response::Json,
     routing::{get, post},
     Router,
 };
 use fluxdb_core::storage::StorageEngine;
 use fluxdb_core::{DataPoint, FieldValue, Fields, Point, SeriesKey};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -18,37 +19,50 @@ use tower_http::trace::TraceLayer;
 /// Application state
 pub type AppState = Arc<StorageEngine>;
 
+type ApiError = (StatusCode, Json<ErrorResponse>);
+fn internal_error(error: impl ToString) -> ApiError {
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse {
+            error: error.to_string(),
+        }),
+    )
+}
+
 /// Create the API router
 pub fn create_router(engine: Arc<StorageEngine>) -> Router {
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin(tower_http::cors::AllowOrigin::list(
+            std::env::var("FLUXDB_CORS_ORIGINS").unwrap_or_else(|_| "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173".into()).split(',').filter_map(|s| s.trim().parse().ok()).collect::<Vec<axum::http::HeaderValue>>()
+        ))
         .allow_methods(Any)
         .allow_headers(Any);
 
-    Router::new()
+    let router = Router::new()
+        .merge(assistant::routes())
+        .merge(console::routes())
         // Health check
         .route("/health", get(health))
         .route("/ping", get(ping))
-        
         // Write endpoint (InfluxDB compatible)
         .route("/write", post(write))
         .route("/api/v2/write", post(write_v2))
-        
         // Query endpoint
         .route("/query", get(query).post(query))
         .route("/api/v2/query", post(query_v2))
-        
         // Database management
         .route("/databases", get(list_databases))
-        .route("/databases/:name", post(create_database).delete(drop_database))
-        
+        .route(
+            "/databases/:name",
+            post(create_database).delete(drop_database),
+        )
         // Stats
         .route("/stats", get(stats))
         .route("/metrics", get(metrics))
-        
-        .layer(cors)
+        .layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024))
         .layer(TraceLayer::new_for_http())
-        .with_state(engine)
+        .with_state(engine);
+    console::instrument(router, console::Monitor::new()).layer(cors)
 }
 
 // ============================================================================
@@ -60,6 +74,7 @@ pub struct WriteParams {
     db: Option<String>,
     database: Option<String>,
     precision: Option<String>,
+    bucket: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -88,6 +103,8 @@ pub struct DatabaseStats {
     pub memtable_size: usize,
     pub sstables: usize,
     pub total_entries: usize,
+    pub retention_seconds: u64,
+    pub total_size_bytes: u64,
 }
 
 #[derive(Debug, Serialize)]
@@ -136,15 +153,35 @@ async fn write(
     Query(params): Query<WriteParams>,
     body: String,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    let db = params.db.or(params.database).unwrap_or_else(|| "default".to_string());
+    let db = params
+        .db
+        .or(params.database)
+        .or(params.bucket)
+        .unwrap_or_else(|| "default".to_string());
     let precision = params.precision.unwrap_or_else(|| "ns".to_string());
 
     let points = parse_line_protocol(&body, &precision)
         .map_err(|e| (StatusCode::BAD_REQUEST, Json(ErrorResponse { error: e })))?;
 
-    engine
-        .write(&db, &points)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e.to_string() })))?;
+    StorageEngine::validate_name(&db).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: e.to_string(),
+            }),
+        )
+    })?;
+    tokio::task::spawn_blocking(move || engine.write(&db, &points))
+        .await
+        .map_err(internal_error)?
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -163,10 +200,26 @@ async fn query(
 ) -> Result<Json<QueryResponse>, (StatusCode, Json<ErrorResponse>)> {
     let db = params.db.unwrap_or_else(|| "default".to_string());
     let sql = params.q.ok_or_else(|| {
-        (StatusCode::BAD_REQUEST, Json(ErrorResponse { error: "Missing query parameter 'q'".into() }))
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Missing query parameter 'q'".into(),
+            }),
+        )
     })?;
 
-    match engine.query(&db, &sql) {
+    if sql.len() > 32768 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "Query exceeds 32 KiB".into(),
+            }),
+        ));
+    }
+    match tokio::task::spawn_blocking(move || engine.query(&db, &sql))
+        .await
+        .map_err(internal_error)?
+    {
         Ok(result) => {
             let series = if result.rows.is_empty() {
                 None
@@ -174,25 +227,37 @@ async fn query(
                 Some(vec![SeriesResult {
                     name: "result".to_string(),
                     columns: result.columns,
-                    values: result.rows.into_iter().map(|row| {
-                        let mut vals = Vec::new();
-                        if let Some(ts) = row.time {
-                            vals.push(serde_json::json!(ts));
-                        }
-                        if let Some(series) = row.series {
-                            vals.push(serde_json::json!(series));
-                        }
-                        for v in row.values {
-                            vals.push(match v {
-                                fluxdb_core::query::QueryValue::Null => serde_json::Value::Null,
-                                fluxdb_core::query::QueryValue::Float(f) => serde_json::json!(f),
-                                fluxdb_core::query::QueryValue::Integer(i) => serde_json::json!(i),
-                                fluxdb_core::query::QueryValue::String(s) => serde_json::json!(s),
-                                fluxdb_core::query::QueryValue::Boolean(b) => serde_json::json!(b),
-                            });
-                        }
-                        vals
-                    }).collect(),
+                    values: result
+                        .rows
+                        .into_iter()
+                        .map(|row| {
+                            let mut vals = Vec::new();
+                            if let Some(ts) = row.time {
+                                vals.push(serde_json::json!(ts));
+                            }
+                            if let Some(series) = row.series {
+                                vals.push(serde_json::json!(series));
+                            }
+                            for v in row.values {
+                                vals.push(match v {
+                                    fluxdb_core::query::QueryValue::Null => serde_json::Value::Null,
+                                    fluxdb_core::query::QueryValue::Float(f) => {
+                                        serde_json::json!(f)
+                                    }
+                                    fluxdb_core::query::QueryValue::Integer(i) => {
+                                        serde_json::json!(i)
+                                    }
+                                    fluxdb_core::query::QueryValue::String(s) => {
+                                        serde_json::json!(s)
+                                    }
+                                    fluxdb_core::query::QueryValue::Boolean(b) => {
+                                        serde_json::json!(b)
+                                    }
+                                });
+                            }
+                            vals
+                        })
+                        .collect(),
                 }])
             };
 
@@ -204,15 +269,13 @@ async fn query(
                 }],
             }))
         }
-        Err(e) => {
-            Ok(Json(QueryResponse {
-                results: vec![QueryResult {
-                    statement_id: 0,
-                    series: None,
-                    error: Some(e.to_string()),
-                }],
-            }))
-        }
+        Err(e) => Ok(Json(QueryResponse {
+            results: vec![QueryResult {
+                statement_id: 0,
+                series: None,
+                error: Some(e.to_string()),
+            }],
+        })),
     }
 }
 
@@ -233,9 +296,7 @@ async fn query_v2(
     query(State(engine), Query(params)).await
 }
 
-async fn list_databases(
-    State(engine): State<AppState>,
-) -> Json<Vec<String>> {
+async fn list_databases(State(engine): State<AppState>) -> Json<Vec<String>> {
     Json(engine.list_databases())
 }
 
@@ -243,10 +304,34 @@ async fn create_database(
     State(engine): State<AppState>,
     Path(name): Path<String>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    engine
-        .create_database(&name)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e.to_string() })))?;
-    
+    fluxdb_core::storage::StorageEngine::validate_name(&name).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: e.to_string(),
+            }),
+        )
+    })?;
+    if engine.get_database(&name).is_some() {
+        return Err((
+            StatusCode::CONFLICT,
+            Json(ErrorResponse {
+                error: "Database already exists".into(),
+            }),
+        ));
+    }
+    tokio::task::spawn_blocking(move || engine.create_database(&name))
+        .await
+        .map_err(internal_error)?
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })?;
+
     Ok(StatusCode::CREATED)
 }
 
@@ -254,53 +339,81 @@ async fn drop_database(
     State(engine): State<AppState>,
     Path(name): Path<String>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    engine
-        .drop_database(&name)
-        .map_err(|e| (StatusCode::NOT_FOUND, Json(ErrorResponse { error: e.to_string() })))?;
-    
+    tokio::task::spawn_blocking(move || engine.drop_database(&name))
+        .await
+        .map_err(internal_error)?
+        .map_err(|e| {
+            (
+                match &e {
+                    fluxdb_core::FluxError::DatabaseNotFound(_) => StatusCode::NOT_FOUND,
+                    fluxdb_core::FluxError::Config(_) => StatusCode::CONFLICT,
+                    _ => StatusCode::INTERNAL_SERVER_ERROR,
+                },
+                Json(ErrorResponse {
+                    error: e.to_string(),
+                }),
+            )
+        })?;
+
     Ok(StatusCode::NO_CONTENT)
 }
 
-async fn stats(State(engine): State<AppState>) -> Json<StatsResponse> {
-    let stats = engine.stats();
-    Json(StatsResponse {
+async fn stats(State(engine): State<AppState>) -> Result<Json<StatsResponse>, ApiError> {
+    let stats = tokio::task::spawn_blocking(move || engine.stats())
+        .await
+        .map_err(internal_error)?;
+    Ok(Json(StatsResponse {
         database_count: stats.database_count,
         total_entries: stats.total_entries,
         total_size_bytes: stats.total_size_bytes,
-        databases: stats.databases.into_iter().map(|d| DatabaseStats {
-            name: d.name,
-            memtable_size: d.memtable_size,
-            sstables: d.sstables,
-            total_entries: d.total_entries,
-        }).collect(),
-    })
+        databases: stats
+            .databases
+            .into_iter()
+            .map(|d| DatabaseStats {
+                name: d.name,
+                memtable_size: d.memtable_size,
+                sstables: d.sstables,
+                total_entries: d.total_entries,
+                retention_seconds: d.retention_seconds,
+                total_size_bytes: d.total_size_bytes,
+            })
+            .collect(),
+    }))
 }
 
-async fn metrics(State(engine): State<AppState>) -> String {
-    let stats = engine.stats();
-    
+async fn metrics(State(engine): State<AppState>) -> Result<String, ApiError> {
+    let stats = tokio::task::spawn_blocking(move || engine.stats())
+        .await
+        .map_err(internal_error)?;
+
     // Prometheus format
     let mut output = String::new();
     output.push_str("# HELP fluxdb_databases_total Total number of databases\n");
     output.push_str("# TYPE fluxdb_databases_total gauge\n");
-    output.push_str(&format!("fluxdb_databases_total {}\n", stats.database_count));
-    
+    output.push_str(&format!(
+        "fluxdb_databases_total {}\n",
+        stats.database_count
+    ));
+
     output.push_str("# HELP fluxdb_entries_total Total number of data points\n");
     output.push_str("# TYPE fluxdb_entries_total gauge\n");
     output.push_str(&format!("fluxdb_entries_total {}\n", stats.total_entries));
-    
+
     output.push_str("# HELP fluxdb_storage_bytes_total Total storage size in bytes\n");
     output.push_str("# TYPE fluxdb_storage_bytes_total gauge\n");
-    output.push_str(&format!("fluxdb_storage_bytes_total {}\n", stats.total_size_bytes));
-    
+    output.push_str(&format!(
+        "fluxdb_storage_bytes_total {}\n",
+        stats.total_size_bytes
+    ));
+
     for db in stats.databases {
         output.push_str(&format!(
             "fluxdb_database_entries{{database=\"{}\"}} {}\n",
             db.name, db.total_entries
         ));
     }
-    
-    output
+
+    Ok(output)
 }
 
 // ============================================================================
@@ -323,67 +436,136 @@ fn parse_line_protocol(data: &str, precision: &str) -> Result<Vec<Point>, String
             continue;
         }
 
+        if points.len() >= 10000 {
+            return Err("A batch accepts at most 10,000 points".into());
+        }
         let point = parse_line(line, precision_multiplier)?;
         points.push(point);
     }
 
+    if points.is_empty() {
+        return Err("No points supplied".into());
+    }
+    if points.len() > 10000 {
+        return Err("Maximum 10,000 points per batch".into());
+    }
     Ok(points)
 }
 
+fn split_protocol(input: &str, delimiter: char) -> Result<Vec<&str>, String> {
+    let mut parts = Vec::new();
+    let mut start = 0;
+    let mut quoted = false;
+    let mut escaped = false;
+    for (i, c) in input.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        if c == '\\' {
+            escaped = true;
+            continue;
+        }
+        if c == '"' {
+            quoted = !quoted;
+        }
+        if c == delimiter && !quoted {
+            parts.push(&input[start..i]);
+            start = i + c.len_utf8();
+        }
+    }
+    if quoted || escaped {
+        return Err("Unterminated quote or escape".into());
+    }
+    parts.push(&input[start..]);
+    Ok(parts)
+}
+fn unescape(input: &str) -> String {
+    let mut out = String::new();
+    let mut chars = input.chars();
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            if let Some(next) = chars.next() {
+                out.push(next);
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+fn pair(input: &str) -> Result<(String, &str), String> {
+    let mut escaped = false;
+    for (i, c) in input.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        if c == '\\' {
+            escaped = true;
+            continue;
+        }
+        if c == '=' {
+            let key = unescape(&input[..i]);
+            let value = &input[i + 1..];
+            if key.is_empty() || value.is_empty() {
+                break;
+            }
+            return Ok((key, value));
+        }
+    }
+    Err("Expected a nonempty key=value pair".into())
+}
 fn parse_line(line: &str, precision_multiplier: i64) -> Result<Point, String> {
-    // Format: measurement,tag1=val1,tag2=val2 field1=val1,field2=val2 timestamp
-    // Example: temperature,sensor=s1,location=room1 value=23.5 1609459200000000000
-
-    let parts: Vec<&str> = line.splitn(3, ' ').collect();
-    if parts.len() < 2 {
-        return Err("Invalid line format".to_string());
+    let parts: Vec<_> = split_protocol(line, ' ')?
+        .into_iter()
+        .filter(|s| !s.is_empty())
+        .collect();
+    if !(2..=3).contains(&parts.len()) {
+        return Err("Expected measurement fields [timestamp]".into());
     }
-
-    // Parse measurement and tags
-    let measurement_tags: Vec<&str> = parts[0].split(',').collect();
-    let measurement = measurement_tags[0];
-    
+    let keys = split_protocol(parts[0], ',')?;
+    let measurement = unescape(keys[0]);
+    if measurement.is_empty() {
+        return Err("Measurement cannot be empty".into());
+    }
     let mut series_key = SeriesKey::new(measurement);
-    for tag in measurement_tags.iter().skip(1) {
-        if let Some((k, v)) = tag.split_once('=') {
-            series_key = series_key.with_tag(k, v);
+    for tag in keys.iter().skip(1) {
+        let (k, v) = pair(tag)?;
+        if series_key.tags.insert(k, unescape(v)).is_some() {
+            return Err("Duplicate tag key".into());
         }
     }
-
-    // Parse fields
     let mut fields = Fields::new();
-    for field in parts[1].split(',') {
-        if let Some((k, v)) = field.split_once('=') {
-            let value = parse_field_value(v)?;
-            fields.insert(k, value);
+    for field in split_protocol(parts[1], ',')? {
+        let (k, v) = pair(field)?;
+        if fields.0.insert(k, parse_field_value(v)?).is_some() {
+            return Err("Duplicate field key".into());
         }
     }
-
-    // Parse timestamp
-    let timestamp = if parts.len() > 2 {
+    let timestamp = if parts.len() == 3 {
         parts[2]
             .parse::<i64>()
             .map_err(|_| "Invalid timestamp")?
-            * precision_multiplier
+            .checked_mul(precision_multiplier)
+            .ok_or("Timestamp overflow")?
     } else {
-        chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+        chrono::Utc::now()
+            .timestamp_nanos_opt()
+            .ok_or("Current time out of range")?
     };
-
-    Ok(Point::new(
-        series_key,
-        DataPoint {
-            timestamp,
-            fields,
-        },
-    ))
+    Ok(Point::new(series_key, DataPoint { timestamp, fields }))
 }
 
 fn parse_field_value(s: &str) -> Result<FieldValue, String> {
     // String (quoted)
     if s.starts_with('"') && s.ends_with('"') {
-        return Ok(FieldValue::String(s[1..s.len()-1].to_string()));
+        if s.len() < 2 {
+            return Err("Invalid quoted string".into());
+        }
+        return Ok(FieldValue::String(unescape(&s[1..s.len() - 1])));
     }
-    
+
     // Boolean
     if s == "true" || s == "t" || s == "T" || s == "TRUE" {
         return Ok(FieldValue::Boolean(true));
@@ -391,19 +573,22 @@ fn parse_field_value(s: &str) -> Result<FieldValue, String> {
     if s == "false" || s == "f" || s == "F" || s == "FALSE" {
         return Ok(FieldValue::Boolean(false));
     }
-    
+
     // Integer (ends with 'i')
     if s.ends_with('i') {
-        let n = s[..s.len()-1]
+        let n = s[..s.len() - 1]
             .parse::<i64>()
             .map_err(|_| "Invalid integer")?;
         return Ok(FieldValue::Integer(n));
     }
-    
+
     // Float (default)
     let n = s
         .parse::<f64>()
         .map_err(|_| format!("Invalid field value: {}", s))?;
+    if !n.is_finite() {
+        return Err("Field values must be finite".into());
+    }
     Ok(FieldValue::Float(n))
 }
 
@@ -413,9 +598,10 @@ mod tests {
 
     #[test]
     fn test_parse_line_protocol() {
-        let line = "temperature,sensor=s1,location=room1 value=23.5,humidity=45.2 1609459200000000000";
+        let line =
+            "temperature,sensor=s1,location=room1 value=23.5,humidity=45.2 1609459200000000000";
         let point = parse_line(line, 1).unwrap();
-        
+
         assert_eq!(point.key.measurement, "temperature");
         assert_eq!(point.key.tags.get("sensor"), Some(&"s1".to_string()));
         assert_eq!(point.data.timestamp, 1609459200000000000);
@@ -423,9 +609,50 @@ mod tests {
 
     #[test]
     fn test_parse_field_values() {
-        assert!(matches!(parse_field_value("23.5"), Ok(FieldValue::Float(_))));
-        assert!(matches!(parse_field_value("42i"), Ok(FieldValue::Integer(42))));
-        assert!(matches!(parse_field_value("\"hello\""), Ok(FieldValue::String(_))));
-        assert!(matches!(parse_field_value("true"), Ok(FieldValue::Boolean(true))));
+        assert!(matches!(
+            parse_field_value("23.5"),
+            Ok(FieldValue::Float(_))
+        ));
+        assert!(matches!(
+            parse_field_value("42i"),
+            Ok(FieldValue::Integer(42))
+        ));
+        assert!(matches!(
+            parse_field_value("\"hello\""),
+            Ok(FieldValue::String(_))
+        ));
+        assert!(matches!(
+            parse_field_value("true"),
+            Ok(FieldValue::Boolean(true))
+        ));
+    }
+}
+
+#[cfg(test)]
+mod protocol_regressions {
+    use super::*;
+    #[test]
+    fn escapes_spaces_strings_and_overflow() {
+        let points = parse_line_protocol(
+            r#"room\ temp,host=api\,one message="hello, world",count=42i,ok=true 100"#,
+            "ms",
+        )
+        .unwrap();
+        assert_eq!(points[0].key.measurement, "room temp");
+        assert_eq!(points[0].key.tags["host"], "api,one");
+        assert_eq!(
+            points[0].data.fields.get("message"),
+            Some(&FieldValue::String("hello, world".into()))
+        );
+        assert_eq!(points[0].data.timestamp, 100_000_000);
+        for line in [
+            "x v=NaN 0",
+            "x v=1 9223372036854775807",
+            "x,broken v=1 0",
+            "x v=\"unclosed 0",
+            "x v=1i,v=2i 0",
+        ] {
+            assert!(parse_line_protocol(line, "s").is_err(), "{line}");
+        }
     }
 }

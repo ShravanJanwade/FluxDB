@@ -10,3 +10,4 @@ rust-version.workspace = true
 tokio.workspace = true
 anyhow.workspace = true
 fluxdb-core = { path = "../fluxdb-core" }
+serde_json.workspace = true

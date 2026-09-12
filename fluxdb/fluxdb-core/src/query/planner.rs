@@ -7,15 +7,14 @@
 //! - Time-based queries
 
 use super::{
-    Query, SelectItem, Condition, GroupBy, AggregateFunc, FromClause, 
-    JoinClause, JoinType, QueryValue,
+    AggregateFunc, Condition, FromClause, JoinClause, JoinType, Query, QueryValue, SelectItem,
 };
-use crate::{Result, SeriesKey, TimeRange};
-use std::collections::HashSet;
+use crate::{Result, TimeRange};
 
 /// Query execution plan
 #[derive(Debug, Clone)]
 pub struct QueryPlan {
+    pub predicate: Option<super::WhereClause>,
     /// Plan type
     pub plan_type: PlanType,
     /// Source measurement (for simple queries)
@@ -140,6 +139,24 @@ pub struct QueryPlanner;
 impl QueryPlanner {
     /// Create an execution plan from a parsed query
     pub fn plan(query: &Query) -> Result<QueryPlan> {
+        if !matches!(query.from, FromClause::Table(_)) {
+            return Err(crate::FluxError::SqlParse(
+                "JOINs and subqueries are not supported by this executor".into(),
+            ));
+        }
+        if query.having.is_some() {
+            return Err(crate::FluxError::SqlParse("HAVING is not supported".into()));
+        }
+        if query
+            .order_by
+            .as_ref()
+            .map(|o| o.items.len() > 1)
+            .unwrap_or(false)
+        {
+            return Err(crate::FluxError::SqlParse(
+                "Only one ORDER BY key is supported".into(),
+            ));
+        }
         let mut time_range = TimeRange::new(i64::MIN, i64::MAX);
         let mut tag_filters = Vec::new();
         let mut field_filters = Vec::new();
@@ -168,13 +185,31 @@ impl QueryPlanner {
             }
             FromClause::Subquery(subquery, _alias) => {
                 let sub_plan = Self::plan(subquery)?;
-                (PlanType::Subquery(Box::new(sub_plan)), "subquery".to_string())
+                (
+                    PlanType::Subquery(Box::new(sub_plan)),
+                    "subquery".to_string(),
+                )
             }
         };
 
         // Parse SELECT
         let (fields, aggregations) = Self::extract_select_items(&query.select)?;
 
+        if !aggregations.is_empty()
+            && query
+                .select
+                .iter()
+                .any(|i| !matches!(i, SelectItem::Aggregate { .. }))
+        {
+            return Err(crate::FluxError::SqlParse(
+                "Select aggregate functions only; grouped tags are included automatically".into(),
+            ));
+        }
+        if aggregations.is_empty() && query.group_by.is_some() {
+            return Err(crate::FluxError::SqlParse(
+                "GROUP BY requires an aggregate function".into(),
+            ));
+        }
         // Parse GROUP BY
         let (time_bucket, group_by_tags) = match &query.group_by {
             Some(gb) => (gb.time_bucket, gb.tags.clone()),
@@ -192,9 +227,10 @@ impl QueryPlanner {
         });
 
         Ok(QueryPlan {
+            predicate: query.where_clause.clone(),
             plan_type,
             measurement,
-            time_range,
+            time_range: TimeRange::new(i64::MIN, i64::MAX),
             tag_filters,
             field_filters,
             advanced_filters,
@@ -216,12 +252,10 @@ impl QueryPlanner {
         // Extract join condition
         let on_condition = match &join.on {
             super::JoinCondition::On(cond) => Self::extract_join_condition(cond),
-            super::JoinCondition::Using(cols) => {
-                cols.first().map(|col| JoinOnCondition {
-                    left_field: col.clone(),
-                    right_field: col.clone(),
-                })
-            }
+            super::JoinCondition::Using(cols) => cols.first().map(|col| JoinOnCondition {
+                left_field: col.clone(),
+                right_field: col.clone(),
+            }),
             super::JoinCondition::Natural => None,
         };
 
@@ -236,6 +270,7 @@ impl QueryPlanner {
     fn plan_from_clause(from: &FromClause) -> Result<QueryPlan> {
         match from {
             FromClause::Table(name) => Ok(QueryPlan {
+                predicate: None,
                 plan_type: PlanType::TableScan,
                 measurement: name.clone(),
                 time_range: TimeRange::new(i64::MIN, i64::MAX),
@@ -255,6 +290,7 @@ impl QueryPlanner {
                 let join_plan = Self::plan_join(join)?;
                 let measurement = Self::get_measurement_from_join(join);
                 Ok(QueryPlan {
+                    predicate: None,
                     plan_type: PlanType::Join(join_plan),
                     measurement,
                     time_range: TimeRange::new(i64::MIN, i64::MAX),
@@ -316,10 +352,14 @@ impl QueryPlanner {
                 SelectItem::QualifiedField { table: _, field } => {
                     field_names.push(field.clone());
                 }
-                SelectItem::Aggregate { function, field, alias } => {
-                    let alias = alias.clone().unwrap_or_else(|| {
-                        format!("{}_{}", Self::func_name(*function), field)
-                    });
+                SelectItem::Aggregate {
+                    function,
+                    field,
+                    alias,
+                } => {
+                    let alias = alias
+                        .clone()
+                        .unwrap_or_else(|| format!("{}_{}", Self::func_name(*function), field));
                     aggregations.push(Aggregation {
                         function: *function,
                         field: field.clone(),
@@ -327,7 +367,9 @@ impl QueryPlanner {
                     });
                 }
                 SelectItem::Expression { .. } => {
-                    // Expression handling would go here
+                    return Err(crate::FluxError::SqlParse(
+                        "Computed SELECT expressions are not supported".into(),
+                    ));
                 }
             }
         }
@@ -350,10 +392,8 @@ impl QueryPlanner {
     ) {
         match condition {
             Condition::TimeRange(tr) => {
-                *time_range = TimeRange::new(
-                    time_range.start.max(tr.start),
-                    time_range.end.min(tr.end),
-                );
+                *time_range =
+                    TimeRange::new(time_range.start.max(tr.start), time_range.end.min(tr.end));
             }
             Condition::TagEquals { tag, value } => {
                 tag_filters.push((tag.clone(), value.clone()));
@@ -365,6 +405,7 @@ impl QueryPlanner {
                     value: *value,
                 });
             }
+            Condition::ValueCompare { .. } => {}
             Condition::StringCompare { field, op, value } => {
                 advanced_filters.push(AdvancedFilter::StringCompare {
                     field: field.clone(),
@@ -372,14 +413,23 @@ impl QueryPlanner {
                     value: value.clone(),
                 });
             }
-            Condition::In { field, values, negated } => {
+            Condition::In {
+                field,
+                values,
+                negated,
+            } => {
                 advanced_filters.push(AdvancedFilter::In {
                     field: field.clone(),
                     values: values.clone(),
                     negated: *negated,
                 });
             }
-            Condition::Between { field, low, high, negated } => {
+            Condition::Between {
+                field,
+                low,
+                high,
+                negated,
+            } => {
                 advanced_filters.push(AdvancedFilter::Between {
                     field: field.clone(),
                     low: low.clone(),
@@ -387,7 +437,11 @@ impl QueryPlanner {
                     negated: *negated,
                 });
             }
-            Condition::Like { field, pattern, negated } => {
+            Condition::Like {
+                field,
+                pattern,
+                negated,
+            } => {
                 advanced_filters.push(AdvancedFilter::Like {
                     field: field.clone(),
                     pattern: pattern.clone(),
@@ -401,16 +455,46 @@ impl QueryPlanner {
                 });
             }
             Condition::And(left, right) => {
-                Self::extract_conditions(left, time_range, tag_filters, field_filters, advanced_filters);
-                Self::extract_conditions(right, time_range, tag_filters, field_filters, advanced_filters);
+                Self::extract_conditions(
+                    left,
+                    time_range,
+                    tag_filters,
+                    field_filters,
+                    advanced_filters,
+                );
+                Self::extract_conditions(
+                    right,
+                    time_range,
+                    tag_filters,
+                    field_filters,
+                    advanced_filters,
+                );
             }
             Condition::Or(left, right) => {
                 // For OR conditions we process both sides
-                Self::extract_conditions(left, time_range, tag_filters, field_filters, advanced_filters);
-                Self::extract_conditions(right, time_range, tag_filters, field_filters, advanced_filters);
+                Self::extract_conditions(
+                    left,
+                    time_range,
+                    tag_filters,
+                    field_filters,
+                    advanced_filters,
+                );
+                Self::extract_conditions(
+                    right,
+                    time_range,
+                    tag_filters,
+                    field_filters,
+                    advanced_filters,
+                );
             }
             Condition::Not(inner) => {
-                Self::extract_conditions(inner, time_range, tag_filters, field_filters, advanced_filters);
+                Self::extract_conditions(
+                    inner,
+                    time_range,
+                    tag_filters,
+                    field_filters,
+                    advanced_filters,
+                );
             }
             Condition::Exists { .. } | Condition::SubqueryCompare { .. } => {
                 // Subquery conditions would need special handling

@@ -108,9 +108,7 @@ impl Fields {
 
     /// Get the size in bytes (approximate)
     pub fn size(&self) -> usize {
-        self.0.iter()
-            .map(|(k, v)| k.len() + v.size())
-            .sum()
+        self.0.iter().map(|(k, v)| k.len() + v.size()).sum()
     }
 
     /// Iterate over fields

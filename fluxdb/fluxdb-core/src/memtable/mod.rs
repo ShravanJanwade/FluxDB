@@ -5,7 +5,7 @@
 
 mod skiplist;
 
-use crate::{DataPoint, Point, SeriesKey, Timestamp, TimeRange, Result};
+use crate::{DataPoint, Point, SeriesKey, TimeRange, Timestamp};
 use parking_lot::RwLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
@@ -70,23 +70,17 @@ impl MemTable {
         let entry_size = key.size() + point.data.size();
 
         let mut data = self.data.write();
+        let previous = data.get(&key).map(|p| key.size() + p.size()).unwrap_or(0);
         data.insert(key, point.data.clone());
+        self.size_bytes.fetch_sub(previous, Ordering::Relaxed);
         self.size_bytes.fetch_add(entry_size, Ordering::Relaxed);
     }
 
     /// Insert multiple points
     pub fn insert_batch(&self, points: &[Point]) {
-        let mut data = self.data.write();
-        let mut total_size = 0;
-
         for point in points {
-            let key = MemTableKey::new(point.key.clone(), point.data.timestamp);
-            let entry_size = key.size() + point.data.size();
-            data.insert(key, point.data.clone());
-            total_size += entry_size;
+            self.insert(point);
         }
-
-        self.size_bytes.fetch_add(total_size, Ordering::Relaxed);
     }
 
     /// Check if the MemTable should be flushed
@@ -105,11 +99,7 @@ impl MemTable {
     }
 
     /// Query a range of data points for a series
-    pub fn query(
-        &self,
-        series_key: &SeriesKey,
-        time_range: &TimeRange,
-    ) -> Vec<DataPoint> {
+    pub fn query(&self, series_key: &SeriesKey, time_range: &TimeRange) -> Vec<DataPoint> {
         let data = self.data.read();
         let start_key = MemTableKey::new(series_key.clone(), time_range.start);
         let end_key = MemTableKey::new(series_key.clone(), time_range.end);
@@ -142,10 +132,7 @@ impl MemTable {
     /// Get all unique series keys
     pub fn series_keys(&self) -> Vec<SeriesKey> {
         let data = self.data.read();
-        let mut keys: Vec<SeriesKey> = data
-            .iter()
-            .map(|(k, _)| k.series_key.clone())
-            .collect();
+        let mut keys: Vec<SeriesKey> = data.iter().map(|(k, _)| k.series_key.clone()).collect();
         keys.sort();
         keys.dedup();
         keys
@@ -169,7 +156,8 @@ impl MemTable {
     pub fn contains_series(&self, series_key: &SeriesKey) -> bool {
         let data = self.data.read();
         let start_key = MemTableKey::new(series_key.clone(), i64::MIN);
-        let result = data.range(&start_key, &start_key)
+        let result = data
+            .range(&start_key, &start_key)
             .any(|(k, _)| k.series_key == *series_key);
         result
     }
