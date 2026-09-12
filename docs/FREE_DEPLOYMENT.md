@@ -61,6 +61,8 @@ nano .env
 
 Replace both example hostnames. Keep the generated admin token private. The resume override deliberately disables a shared server Gemini key. Visitors can use their own key in Ask AI → Assistant settings. A public shared LLM key would expose your API quota to anonymous callers; a subscription does not guarantee unlimited or free API use. See [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing).
 
+If Render's Blueprint does not populate `FLUXDB_TOKEN`, the included Render wrapper generates a random ephemeral token so the public read/query demo can still start. Set your own 32+ character `FLUXDB_TOKEN` in Render's Environment tab if you need private administrator CRUD access; otherwise the generated token is intentionally not displayed or recoverable after a restart.
+
 For a frictionless resume presentation, provide a short video showing your authenticated write/update/delete and AI workflows alongside the live browsing/query demo.
 
 ## 6. Validate and start

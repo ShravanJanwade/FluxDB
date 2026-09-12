@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 import re
+import secrets
 import signal
 import subprocess
 import sys
@@ -23,13 +24,21 @@ def configuration(template, token, port):
 
 def main():
     root = Path(__file__).resolve().parents[2]
-    token = os.environ.get("FLUXDB_TOKEN", "")
+    supplied_token = os.environ.get("FLUXDB_TOKEN", "").strip()
+    # Render's generatedValue is normally a safe token, but older Blueprint
+    # deployments can leave it unset. Keep the public demo bootable and use a
+    # private random token in that case; an operator-provided valid token wins.
+    token = supplied_token if re.fullmatch(r"[A-Za-z0-9_-]{32,256}", supplied_token) else secrets.token_hex(32)
+    if not supplied_token:
+        print("FLUXDB_TOKEN was not supplied; generated an ephemeral admin token for this demo instance.", flush=True)
+    elif token != supplied_token:
+        print("FLUXDB_TOKEN had an unsafe format; generated an ephemeral admin token. Set a 32+ character token for private CRUD access.", flush=True)
     config = configuration(Path(__file__).with_name("nginx.conf.template").read_text(), token, os.getenv("PORT", "10000"))
     config_path = Path("/tmp/fluxdb-nginx.conf")
     config_path.touch(mode=0o600, exist_ok=True)
     config_path.chmod(0o600)
     config_path.write_text(config)
-    env = {**os.environ, "FLUXDB_ADDR": "127.0.0.1:18086", "FLUXDB_DATA_DIR": str(root / "data"), "GEMINI_API_KEY": ""}
+    env = {**os.environ, "FLUXDB_TOKEN": token, "FLUXDB_ADDR": "127.0.0.1:18086", "FLUXDB_DATA_DIR": str(root / "data"), "GEMINI_API_KEY": ""}
     children = []
     stopping = False
 
