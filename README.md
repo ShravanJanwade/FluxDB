@@ -6,7 +6,6 @@ A single-node time-series database in Rust, with a browser administration consol
 
 ## Run locally
 
-For a public resume demo, follow the [free VM deployment guide](docs/FREE_DEPLOYMENT.md), including HTTPS, persistent storage, and the read-only public gateway.
 
 Install Rust 1.89+ (1.96 tested), Node.js 22.12+ (24 tested), and optionally Python 3.10+ for the SDK, demo, backup restore, and smoke tests.
 
