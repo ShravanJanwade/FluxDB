@@ -11,6 +11,9 @@ http {
     access_log off;
     client_body_temp_path /tmp/fluxdb-body;
     proxy_temp_path /tmp/fluxdb-proxy;
+    fastcgi_temp_path /tmp/fluxdb-fastcgi;
+    uwsgi_temp_path /tmp/fluxdb-uwsgi;
+    scgi_temp_path /tmp/fluxdb-scgi;
     client_max_body_size 2m;
     limit_req_zone $server_name zone=api:1m rate=10r/s;
     limit_req_zone $server_name zone=ai:1m rate=6r/m;
