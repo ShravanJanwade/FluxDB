@@ -9,9 +9,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-// The `core` entry takes the echarts instance we register components on,
-// instead of pulling in the full pre-bundled build.
-import ReactECharts from "echarts-for-react/lib/core";
 import * as echarts from "echarts/core";
 import { BarChart, LineChart } from "echarts/charts";
 import {
@@ -20,6 +17,9 @@ import {
   TooltipComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
+// echarts 6 moved `grid.containLabel` behind an opt-in feature. Without this
+// the option is ignored and axis labels are clipped by the plot area.
+import { LegacyGridContainLabel } from "echarts/features";
 import type { EChartsOption } from "echarts";
 import {
   AlertTriangle,
@@ -40,6 +40,7 @@ echarts.use([
   TooltipComponent,
   LegendComponent,
   CanvasRenderer,
+  LegacyGridContainLabel,
 ]);
 
 // ---------------------------------------------------------------------------
@@ -231,9 +232,17 @@ export function UsageBar({
 }
 
 /**
- * ECharts wrapper. Charts are re-created when the theme changes, because their
- * colours come from CSS custom properties that ECharts has already resolved
- * into its own option object.
+ * ECharts wrapper.
+ *
+ * ECharts is driven directly rather than through a React binding. The bindings
+ * available for echarts 6 resize by hooking internals that moved, so a chart
+ * mounted before its container had been laid out kept drawing into the width it
+ * saw at init — a panel measured 134 px wide while its box was 589. Owning the
+ * instance means the `ResizeObserver` here is the single source of truth for
+ * sizing, and `dispose` is guaranteed to run.
+ *
+ * The instance is recreated when the theme changes, because chart colours are
+ * read from CSS custom properties and resolved into the option object.
  */
 export function Chart({
   option,
@@ -245,24 +254,47 @@ export function Chart({
   empty?: ReactNode;
 }) {
   const { appearance } = useTheme();
-  if (!option) {
+  const container = useRef<HTMLDivElement>(null);
+  const instance = useRef<echarts.ECharts | null>(null);
+  const hasOption = option !== null;
+
+  useEffect(() => {
+    const node = container.current;
+    if (!node) return;
+    const chart = echarts.init(node, undefined, { renderer: "canvas" });
+    instance.current = chart;
+    // The container is often zero- or wrongly-sized on the frame the chart
+    // mounts. This is what corrects it, and what keeps the chart right when the
+    // sidebar collapses or the window changes.
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => chart.resize());
+    observer?.observe(node);
+    return () => {
+      observer?.disconnect();
+      chart.dispose();
+      instance.current = null;
+    };
+  }, [appearance, hasOption]);
+
+  useEffect(() => {
+    if (option) {
+      // `notMerge`: a new result replaces the previous series rather than
+      // merging into it, so removing a series actually removes it.
+      instance.current?.setOption(option, true);
+      instance.current?.resize();
+    }
+  }, [option]);
+
+  if (!hasOption) {
     return (
       <div className="chart-empty" style={{ height }}>
         {empty ?? "No data in this range"}
       </div>
     );
   }
-  return (
-    <ReactECharts
-      key={appearance}
-      echarts={echarts}
-      option={option}
-      style={{ height, width: "100%" }}
-      opts={{ renderer: "canvas" }}
-      notMerge
-      lazyUpdate
-    />
-  );
+  return <div ref={container} style={{ width: "100%", height }} />;
 }
 
 // ---------------------------------------------------------------------------

@@ -37,6 +37,7 @@ import {
   sparklineOption,
   statValue,
   toSeries,
+  windowOf,
 } from "../lib/charts";
 import { cellText, decimal } from "../lib/format";
 import { DEFAULT_RANGE, resolveRange, type RangeKey } from "../lib/time";
@@ -401,7 +402,10 @@ function PanelCard({
           <Chart
             option={
               shaped.series.length > 0 || shaped.bars.length > 0
-                ? chartOption(shaped, panel.kind, panel.unit, { compact: true })
+                ? chartOption(shaped, panel.kind, panel.unit, {
+                    compact: true,
+                    window: windowOf(query.data),
+                  })
                 : null
             }
             height={panel.span <= 4 ? 190 : 240}

@@ -91,13 +91,22 @@ struct Sample {
 }
 
 impl Monitor {
-    pub fn new() -> Self {
+    /// `token` is the shared administration credential for `/api/v1`. `None`
+    /// leaves that surface open, which is only acceptable for a loopback-only
+    /// single-tenant server: it can name every engine database directly and so
+    /// bypasses project tenancy entirely.
+    pub fn new(token: Option<String>) -> Self {
         Self {
             active: Arc::new(tokio::sync::Semaphore::new(32)),
             started: Instant::now(),
             samples: Arc::new(Mutex::new(VecDeque::new())),
-            token: std::env::var("FLUXDB_TOKEN").ok().filter(|s| !s.is_empty()),
+            token: token.filter(|value| !value.is_empty()),
         }
+    }
+
+    /// Read the configured token from the environment.
+    pub fn token_from_env() -> Option<String> {
+        std::env::var("FLUXDB_TOKEN").ok().filter(|s| !s.is_empty())
     }
 
     /// Record a request that was served outside this middleware, so cloud API
@@ -139,7 +148,7 @@ impl Monitor {
 
 impl Default for Monitor {
     fn default() -> Self {
-        Self::new()
+        Self::new(Self::token_from_env())
     }
 }
 
@@ -461,8 +470,7 @@ mod integration_tests {
             })
             .unwrap(),
         );
-        let mut monitor = Monitor::new();
-        monitor.token = Some("test-secret".into());
+        let monitor = Monitor::new(Some("test-secret".into()));
         let app = instrument(routes().with_state(engine), monitor);
         assert_eq!(
             call(&app, "GET", "/api/v1/health", json!(null), false)

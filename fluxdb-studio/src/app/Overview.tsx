@@ -26,7 +26,7 @@ import {
   useLoader,
 } from "../components/ui";
 import { api } from "../lib/api";
-import { chartOption, toSeries } from "../lib/charts";
+import { chartOption, toSeries, windowOf } from "../lib/charts";
 import { bytes, count, decimal, relative } from "../lib/format";
 import { DEFAULT_RANGE, resolveRange, type RangeKey } from "../lib/time";
 import { useToast } from "../lib/toast";
@@ -274,7 +274,10 @@ export default function Overview() {
           />
         ) : (
           <Chart
-            option={chartOption(shaped, "area", "", { legend: false })}
+            option={chartOption(shaped, "area", "", {
+              legend: false,
+              window: windowOf(preview.data?.result),
+            })}
             height={260}
           />
         )}

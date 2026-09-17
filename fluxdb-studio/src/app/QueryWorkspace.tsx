@@ -32,7 +32,7 @@ import {
   type Column,
 } from "../components/ui";
 import { api } from "../lib/api";
-import { chartOption, toSeries } from "../lib/charts";
+import { chartOption, toSeries, windowOf } from "../lib/charts";
 import { cellText, count, milliseconds } from "../lib/format";
 import { DEFAULT_RANGE, resolveRange, type RangeKey } from "../lib/time";
 import { useToast } from "../lib/toast";
@@ -342,6 +342,7 @@ export default function QueryWorkspace() {
                   shaped,
                   shaped.hasTime ? "line" : "bar",
                   "",
+                  { window: windowOf(result) },
                 )}
                 height={330}
               />

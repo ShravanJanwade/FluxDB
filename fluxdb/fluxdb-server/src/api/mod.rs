@@ -3,7 +3,7 @@ pub mod console;
 pub mod data;
 // HTTP API endpoints
 
-use axum::http::{header, HeaderName, Method};
+use axum::http::{header, HeaderName, HeaderValue, Method};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -14,8 +14,13 @@ use axum::{
 use fluxdb_core::storage::StorageEngine;
 use fluxdb_core::{DataPoint, FieldValue, Fields, Point, SeriesKey};
 use serde::{Deserialize, Serialize};
+use std::path::Path as FsPath;
 use std::sync::Arc;
+use tower::ServiceBuilder;
+use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
+use tower_http::services::{ServeDir, ServeFile};
+use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 
 /// Application state
@@ -52,6 +57,8 @@ pub fn allowed_origins() -> Vec<String> {
 pub fn create_router(
     engine: Arc<StorageEngine>,
     cloud: Option<crate::cloud::CloudState>,
+    telemetry: console::Monitor,
+    static_dir: Option<&FsPath>,
 ) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(tower_http::cors::AllowOrigin::list(
@@ -99,18 +106,82 @@ pub fn create_router(
         // Stats
         .route("/stats", get(stats))
         .route("/metrics", get(metrics))
+        // Anything unmatched under /api is a client mistake, not a page: answer
+        // in the shape an API caller can parse instead of returning the
+        // console's HTML shell.
+        .route("/api/*rest", axum::routing::any(unknown_api_path))
         .layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024))
         .layer(TraceLayer::new_for_http())
         .with_state(engine);
-    let telemetry = cloud
-        .as_ref()
-        .map(|cloud| cloud.telemetry.clone())
-        .unwrap_or_default();
     let router = match cloud {
         Some(cloud) => router.merge(crate::cloud::routes(cloud)),
         None => router,
     };
-    console::instrument(router, telemetry).layer(cors)
+    let api = console::instrument(router, telemetry);
+    // The static console is merged into a fresh router so it sits outside the
+    // administration-token middleware: the browser has to be able to fetch the
+    // application shell before anyone has signed in.
+    let router = match static_dir {
+        Some(dir) => Router::new()
+            .merge(api)
+            .fallback_service(console_files(dir)),
+        None => api,
+    };
+    router
+        .layer(cors)
+        // Outermost, so the request-observing middleware still sees
+        // uncompressed bodies when it rewrites a non-JSON error.
+        .layer(CompressionLayer::new())
+        .layer(SetResponseHeaderLayer::overriding(
+            header::X_CONTENT_TYPE_OPTIONS,
+            HeaderValue::from_static("nosniff"),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            header::X_FRAME_OPTIONS,
+            HeaderValue::from_static("DENY"),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+            header::REFERRER_POLICY,
+            HeaderValue::from_static("no-referrer"),
+        ))
+}
+
+async fn unknown_api_path(uri: axum::http::Uri) -> ApiError {
+    (
+        StatusCode::NOT_FOUND,
+        Json(ErrorResponse {
+            error: format!(
+                "No API endpoint at {}. See /api/v1/openapi.json for the token API, or /docs for the full reference.",
+                uri.path()
+            ),
+        }),
+    )
+}
+
+/// Static file service for the console. Unknown paths fall back to
+/// `index.html`, because the console is a single-page application: a deep link
+/// such as `/app/p/abc/query` has to reach the browser router rather than a
+/// 404. Build outputs carry content hashes in their names, so `/assets` is
+/// immutable for a year while `index.html` itself is never cached.
+fn console_files(dir: &FsPath) -> Router {
+    let cache = |value: &'static str| {
+        SetResponseHeaderLayer::overriding(header::CACHE_CONTROL, HeaderValue::from_static(value))
+    };
+    let assets = ServiceBuilder::new()
+        .layer(cache("public, max-age=31536000, immutable"))
+        .service(ServeDir::new(dir.join("assets")));
+    let documents = ServiceBuilder::new().layer(cache("no-cache")).service(
+        ServeDir::new(dir)
+            .append_index_html_on_directories(true)
+            // `fallback`, not `not_found_service`: the latter forces a 404
+            // onto the response, and a deep link into the console has to
+            // answer 200 with the application shell or the browser router
+            // never gets a chance to resolve it.
+            .fallback(ServeFile::new(dir.join("index.html"))),
+    );
+    Router::new()
+        .nest_service("/assets", assets)
+        .fallback_service(documents)
 }
 
 // ============================================================================

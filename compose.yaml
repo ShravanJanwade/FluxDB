@@ -1,28 +1,38 @@
+# One service: the engine, the control plane and the console.
+#
+# Time-series data lives on a named volume. Control-plane metadata (accounts,
+# projects, API keys) goes to the same volume as a SQLite file unless you set
+# DATABASE_URL, which is what a deployment with an ephemeral filesystem needs.
 services:
-  server:
+  fluxdb:
     build:
       context: .
       dockerfile: Dockerfile
+    ports:
+      # Bound to loopback: put an HTTPS reverse proxy in front for anything
+      # reachable from outside this host.
+      - "127.0.0.1:8080:8086"
     environment:
       FLUXDB_ADDR: 0.0.0.0:8086
-      FLUXDB_DATA_DIR: /data
+      FLUXDB_DATA_DIR: /app/data
+      FLUXDB_STATIC_DIR: /app/web
+      # The administration token for /api/v1. That surface names engine
+      # databases directly and so sits underneath project isolation, which is
+      # why it always needs a real secret.
+      FLUXDB_TOKEN: ${FLUXDB_TOKEN:?Set FLUXDB_TOKEN in the root .env file}
+      # Signs OAuth state. Without a stable value, sign-in round trips started
+      # before a restart cannot be completed after it.
+      FLUXDB_SESSION_SECRET: ${FLUXDB_SESSION_SECRET:?Set FLUXDB_SESSION_SECRET in the root .env file}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      DATABASE_URL: ${DATABASE_URL:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
-      FLUXDB_TOKEN: ${FLUXDB_TOKEN:?Set FLUXDB_TOKEN in the root .env file}
-      FLUXDB_CORS_ORIGINS: ${FLUXDB_CORS_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
     volumes:
-      - fluxdb-data:/data
+      - fluxdb-data:/app/data
     restart: unless-stopped
+    # Long enough for a graceful shutdown to flush memtables.
     stop_grace_period: 60s
-  studio:
-    build:
-      context: .
-      dockerfile: fluxdb-studio/Dockerfile
-    ports:
-      - "127.0.0.1:8080:8080"
-    depends_on:
-      server:
-        condition: service_healthy
-    restart: unless-stopped
 volumes:
   fluxdb-data:

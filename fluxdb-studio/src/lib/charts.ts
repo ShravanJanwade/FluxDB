@@ -210,13 +210,33 @@ const baseTooltip = (theme: ChartInk) => ({
   confine: true,
 });
 
+/**
+ * The requested window, in milliseconds, from a result's echoed bounds. Charts
+ * use this to pin the axis: without it ECharts scales the axis to the data,
+ * which would show "Last 6 hours" above an axis covering one hour because that
+ * is all the bucket happens to hold.
+ */
+export function windowOf(
+  result: QueryResult | null | undefined,
+): { from: number; to: number } | undefined {
+  if (!result?.window) return undefined;
+  const from = nanosToMs(result.window.from);
+  const to = nanosToMs(result.window.to);
+  return Number.isFinite(from) && Number.isFinite(to) ? { from, to } : undefined;
+}
+
 /** Chart option for a shaped result. `kind` picks between lines, filled areas
  *  and bars; everything else is derived. */
 export function chartOption(
   shaped: Shaped,
   kind: Exclude<PanelKind, "stat" | "table">,
   unit: string,
-  options: { legend?: boolean; compact?: boolean } = {},
+  options: {
+    legend?: boolean;
+    compact?: boolean;
+    /** Millisecond bounds to pin the time axis to. */
+    window?: { from: number; to: number };
+  } = {},
 ): EChartsOption {
   const theme = ink();
   const colours = palette();
@@ -256,6 +276,11 @@ export function chartOption(
     : { show: false };
 
   if (shaped.hasTime) {
+    // The axis shows the range the viewer asked for, so a gap in the data reads
+    // as a gap rather than being hidden by a rescaled axis.
+    const axisSpan = options.window
+      ? options.window.to - options.window.from
+      : shaped.spanMs;
     return {
       color: colours,
       grid,
@@ -267,11 +292,13 @@ export function chartOption(
       },
       xAxis: {
         type: "time",
+        min: options.window?.from,
+        max: options.window?.to,
         axisLabel: {
           color: theme.muted,
           fontSize: 11,
           hideOverlap: true,
-          formatter: (value: number) => axisLabel(value, shaped.spanMs),
+          formatter: (value: number) => axisLabel(value, axisSpan),
         },
         axisLine: { lineStyle: { color: theme.grid } },
         axisTick: { show: false },

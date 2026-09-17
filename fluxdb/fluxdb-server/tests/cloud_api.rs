@@ -106,6 +106,13 @@ impl Client {
 /// Build the application over throwaway directories. The `TempDir` is returned
 /// so it outlives the test.
 async fn app() -> (tempfile::TempDir, Router) {
+    app_with_console(None).await
+}
+
+/// `console` is the directory a built console would live in. Passing it
+/// explicitly matters: it used to come from the environment, and tests running
+/// in parallel raced over that single variable.
+async fn app_with_console(console: Option<std::path::PathBuf>) -> (tempfile::TempDir, Router) {
     // Sessions are signed, so a stable secret is required; the control plane
     // and data directory are per-test.
     std::env::set_var(
@@ -122,6 +129,7 @@ async fn app() -> (tempfile::TempDir, Router) {
     let config = fluxdb_server::ServerConfig {
         http_addr: "127.0.0.1:0".parse().unwrap(),
         data_dir: dir.path().to_path_buf(),
+        static_dir: console,
     };
     let (_engine, _cloud, router) = fluxdb_server::build(&config).await.expect("app builds");
     (dir, router)
@@ -535,6 +543,47 @@ async fn unauthenticated_requests_are_refused() {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(config["providers"]["github"], false);
     assert_eq!(config["control_plane"], "sqlite");
+}
+
+#[tokio::test]
+async fn the_single_tenant_api_is_never_anonymous_when_accounts_exist() {
+    // `/api/v1` names engine databases directly, so it sits underneath the
+    // tenancy boundary: one open request there would expose every account's
+    // data. No FLUXDB_TOKEN is configured in these tests, which is exactly the
+    // case that used to leave it open.
+    let (_dir, app) = app().await;
+    let mut anonymous = Client::new(&app);
+
+    for (method, path) in [
+        ("GET", "/api/v1/databases"),
+        ("GET", "/api/v1/stats"),
+        ("GET", "/api/v1/telemetry"),
+        ("GET", "/metrics"),
+        ("POST", "/api/v1/databases/anything"),
+    ] {
+        let (status, _) = anonymous.send(method, path, None).await;
+        assert_eq!(
+            status,
+            StatusCode::UNAUTHORIZED,
+            "{method} {path} was reachable without the administration token"
+        );
+    }
+
+    // Liveness stays public so an orchestrator can probe the instance.
+    for path in ["/health", "/api/v1/health"] {
+        let (status, _) = anonymous.send("GET", path, None).await;
+        assert_eq!(status, StatusCode::OK, "{path} should stay public");
+    }
+
+    // And a signed-in account still reaches its own data through the cloud API.
+    let mut client = Client::new(&app);
+    let session = client.signup("tenant@example.com").await;
+    let org = own_org(&session);
+    let project = org["projects"][0]["id"].as_str().unwrap();
+    let (status, _) = client
+        .send("GET", &format!("/api/cloud/projects/{project}"), None)
+        .await;
+    assert_eq!(status, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -1255,4 +1304,50 @@ async fn sample_data_can_be_loaded_once_into_an_empty_bucket() {
         )
         .await;
     assert_eq!(status, StatusCode::CONFLICT);
+}
+
+#[tokio::test]
+async fn the_console_is_served_from_the_same_process_as_the_api() {
+    // One process serves the API, the static console and the single-page
+    // fallback, so a deployment has no reverse proxy to misconfigure. A deep
+    // link must answer 200 with the application shell: a 404 would stop the
+    // browser router before it ever ran.
+    let web = tempfile::tempdir().expect("temp dir");
+    std::fs::write(
+        web.path().join("index.html"),
+        "<!doctype html><title>FluxDB</title>",
+    )
+    .expect("write index.html");
+    std::fs::create_dir(web.path().join("assets")).expect("assets dir");
+    std::fs::write(web.path().join("assets/app-abc123.js"), "export default 1;")
+        .expect("write asset");
+
+    let (_dir, app) = app_with_console(Some(web.path().to_path_buf())).await;
+    let mut visitor = Client::new(&app);
+
+    for path in ["/", "/login", "/docs", "/app/p/demofluxdb99/query"] {
+        let (status, body) = visitor.send("GET", path, None).await;
+        assert_eq!(
+            status,
+            StatusCode::OK,
+            "{path} did not serve the console: {body}"
+        );
+    }
+
+    // The API is unaffected by the static fallback.
+    let (status, config) = visitor.send("GET", "/api/cloud/config", None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(config["demo_project_id"], "demofluxdb99");
+
+    // An unknown API path stays an API error rather than becoming the shell,
+    // so a broken client sees JSON it can parse instead of a page of HTML.
+    let (status, body) = visitor.send("GET", "/api/cloud/nonexistent", None).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert!(
+        body["error"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("No API endpoint"),
+        "{body}"
+    );
 }

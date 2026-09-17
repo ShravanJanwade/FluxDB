@@ -27,6 +27,10 @@ pub struct ServerConfig {
     pub http_addr: SocketAddr,
     /// Persistent storage directory for time-series data.
     pub data_dir: PathBuf,
+    /// Built console to serve from this process. `Some` makes one binary the
+    /// whole deployment: API, static files and the single-page fallback on one
+    /// port, with no reverse proxy to misconfigure.
+    pub static_dir: Option<PathBuf>,
 }
 
 impl Default for ServerConfig {
@@ -34,6 +38,7 @@ impl Default for ServerConfig {
         Self {
             http_addr: "127.0.0.1:8086".parse().expect("valid default address"),
             data_dir: PathBuf::from("data"),
+            static_dir: None,
         }
     }
 }
@@ -44,9 +49,26 @@ impl ServerConfig {
         let mut config = Self::default();
         if let Ok(addr) = std::env::var("FLUXDB_ADDR") {
             config.http_addr = addr.parse()?;
+        } else if let Ok(port) = std::env::var("PORT") {
+            // Platforms that assign a port (Render, Fly, Heroku) pass it here
+            // and expect the process to listen on every interface.
+            config.http_addr = format!("0.0.0.0:{}", port.trim()).parse()?;
         }
         if let Ok(dir) = std::env::var("FLUXDB_DATA_DIR") {
             config.data_dir = dir.into();
+        }
+        if let Ok(dir) = std::env::var("FLUXDB_STATIC_DIR") {
+            let path = PathBuf::from(dir.trim());
+            if path.join("index.html").is_file() {
+                config.static_dir = Some(path);
+            } else {
+                // A typo here would otherwise be silent: the API would keep
+                // working while every browser request answered 404.
+                anyhow::bail!(
+                    "FLUXDB_STATIC_DIR={} does not contain index.html. Point it at the console's build output, or unset it to serve the API only.",
+                    path.display()
+                );
+            }
         }
         // An instance reachable from outside this machine must have a real
         // administration token; the alternative is publishing an open database.
@@ -127,9 +149,26 @@ pub async fn build(
         data_dir: config.data_dir.clone(),
         ..Default::default()
     })?);
-    let cloud = match control_plane_url(&config.data_dir) {
+    let control_plane = control_plane_url(&config.data_dir);
+    // `/api/v1` addresses engine databases by name, so it sits underneath the
+    // tenancy boundary. Leaving it anonymous alongside a control plane would
+    // publish every account's data, so a token is always in force when accounts
+    // exist — generated and logged if the operator did not supply one.
+    let admin_token = match (api::console::Monitor::token_from_env(), &control_plane) {
+        (Some(token), _) => Some(token),
+        (None, Some(_)) => {
+            let generated = cloud::auth::random_token(32);
+            tracing::warn!(
+                "FLUXDB_TOKEN is not set. The token API at /api/v1 can name any engine database and would bypass project isolation, so an ephemeral token was generated for this run: {generated}"
+            );
+            Some(generated)
+        }
+        (None, None) => None,
+    };
+    let telemetry = api::console::Monitor::new(admin_token);
+    let cloud = match control_plane {
         Some(url) => Some(
-            cloud::Cloud::open(engine.clone(), &url, api::console::Monitor::new())
+            cloud::Cloud::open(engine.clone(), &url, telemetry.clone())
                 .await
                 // A control plane that cannot start is a configuration problem
                 // worth failing on: silently serving a signed-out product would
@@ -143,7 +182,12 @@ pub async fn build(
             None
         }
     };
-    let router = api::create_router(engine.clone(), cloud.clone());
+    let router = api::create_router(
+        engine.clone(),
+        cloud.clone(),
+        telemetry,
+        config.static_dir.as_deref(),
+    );
     Ok((engine, cloud, router))
 }
 

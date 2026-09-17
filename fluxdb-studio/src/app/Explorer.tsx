@@ -34,7 +34,7 @@ import {
   useLoader,
   type Column,
 } from "../components/ui";
-import { chartOption, toSeries } from "../lib/charts";
+import { chartOption, toSeries, windowOf } from "../lib/charts";
 import { count, fieldText, nanosToLocal } from "../lib/format";
 import { nowNanos, resolveRange, type RangeKey } from "../lib/time";
 import { useToast } from "../lib/toast";
@@ -407,7 +407,10 @@ export default function Explorer() {
                 <Chart
                   option={
                     shaped.series.length > 0
-                      ? chartOption(shaped, "area", "", { legend: false })
+                      ? chartOption(shaped, "area", "", {
+                          legend: false,
+                          window: windowOf(series.data),
+                        })
                       : null
                   }
                   height={220}
