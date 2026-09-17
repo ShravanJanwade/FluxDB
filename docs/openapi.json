@@ -3,7 +3,7 @@
   "info": {
     "title": "FluxDB API",
     "version": "0.1.0",
-    "description": "Single-node time-series database. JSON timestamps and i64 fields use decimal strings. The UI Developer resources page documents examples, SQL support and limitations."
+    "description": "FluxDB exposes three HTTP surfaces against one storage engine.\n\n`/api/v1` is the single-tenant administration API, authenticated by one shared bearer token (`bearerAuth`). It names engine databases directly and so sits underneath project isolation; it is what a self-hosted server, the SDKs and the offline CLI use.\n\n`/api/ingest/v1` is for agents and applications on a hosted deployment, authenticated by a project API key (`apiKeyAuth`) with read and write scopes. A key reaches only its own project's buckets.\n\n`/api/cloud` is the console's API, authenticated by the session cookie (`sessionCookie`). Data is addressed as project plus bucket; a caller can never name an engine database.\n\nTimestamps are decimal nanosecond strings and exact 64-bit integers are `{\"integer\": \"…\"}`, because an IEEE-754 double cannot represent the whole i64 range. Query results return both as strings for the same reason."
   },
   "servers": [
     {
@@ -371,7 +371,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "Default 100, clamped to 1\u20131000"
+            "description": "Default 100, clamped to 1–1000"
           },
           {
             "name": "offset",
@@ -934,13 +934,1004 @@
           }
         }
       }
+    },
+    "/api/cloud/config": {
+      "get": {
+        "summary": "Public deployment description",
+        "description": "What the sign-in screen needs before there is a session: engine version, which identity providers are configured, the showcase project id, which metadata store is in use, and the plan limits.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Deployment configuration"
+          }
+        }
+      }
+    },
+    "/api/cloud/public/stats": {
+      "get": {
+        "summary": "Measured figures from the running instance",
+        "description": "Published so the front page can quote real numbers. Limited to the public showcase project and instance-wide request percentiles: no tenant's data, names or counts appear here.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Version, uptime, showcase point count, request percentiles"
+          }
+        }
+      }
+    },
+    "/api/cloud/auth/signup": {
+      "post": {
+        "summary": "Create an account and its first workspace",
+        "description": "Provisions an organization, a project and an empty bucket, grants viewer access to the shared showcase, and redeems any pending invitations for the address. Sets the session cookie.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "At least 10 characters. 16 or more is accepted on length alone; shorter ones must mix three of upper case, lower case, digits and symbols."
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created; session cookie set"
+          },
+          "400": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cloud/auth/login": {
+      "post": {
+        "summary": "Sign in",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session cookie set; account and workspaces returned"
+          },
+          "401": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cloud/auth/guest": {
+      "post": {
+        "summary": "Start a temporary demo workspace",
+        "description": "Creates a credential-less account with a private, pre-filled sandbox. Deleted automatically with everything in it after 24 hours. Rate limited per address and capped globally.",
+        "security": [],
+        "responses": {
+          "201": {
+            "description": "Guest session created"
+          },
+          "429": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cloud/auth/session": {
+      "get": {
+        "summary": "Current account, organizations and projects",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session payload"
+          },
+          "401": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cloud/auth/logout": {
+      "post": {
+        "summary": "Sign out and revoke this session",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session cleared"
+          }
+        }
+      }
+    },
+    "/api/ingest/v1/whoami": {
+      "get": {
+        "summary": "What an API key can reach",
+        "description": "The key's project, name and scopes, and the buckets it can address.",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Key and project"
+          },
+          "401": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ingest/v1/write": {
+      "post": {
+        "summary": "Write points in InfluxDB line protocol",
+        "description": "The format most metrics agents already emit. Integers carry an `i` suffix; commas, spaces and equals signs inside keys and tag values are backslash-escaped. A line with no timestamp is stamped on arrival.",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bucket",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Target bucket name. Optional when the project has exactly one bucket. `db` is accepted as an alias so InfluxDB-shaped agent configuration works unchanged."
+          },
+          {
+            "name": "precision",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ns",
+                "us",
+                "ms",
+                "s"
+              ],
+              "default": "ns"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "string"
+              },
+              "example": "cpu,host=api-01 usage=42.8,cores=8i 1789142400"
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Written"
+          },
+          "400": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ingest/v1/points": {
+      "post": {
+        "summary": "Write a JSON batch of points",
+        "description": "An invalid point rejects the whole batch rather than writing part of it.",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bucket",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Target bucket name. Optional when the project has exactly one bucket. `db` is accepted as an alias so InfluxDB-shaped agent configuration works unchanged."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "points": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 10000,
+                    "items": {
+                      "$ref": "#/components/schemas/Point"
+                    }
+                  }
+                },
+                "required": [
+                  "points"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Written count and bucket"
+          },
+          "400": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ingest/v1/query": {
+      "post": {
+        "summary": "Run SQL against one bucket",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/QueryRequest"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "bucket": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cloud/projects/{project}/buckets/{bucket}/points": {
+      "get": {
+        "summary": "Read points, newest first",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bucket",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "measurement",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "default": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of points"
+          },
+          "401": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Write or upsert a batch",
+        "description": "Rewriting the same measurement, tag set and timestamp merges fields; supplied fields replace existing values.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bucket",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "points": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 10000,
+                    "items": {
+                      "$ref": "#/components/schemas/Point"
+                    }
+                  }
+                },
+                "required": [
+                  "points"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Written count"
+          },
+          "400": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an inclusive time range",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bucket",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "measurement": {
+                    "type": "string"
+                  },
+                  "tags": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
+                  "start": {
+                    "type": "string"
+                  },
+                  "end": {
+                    "type": "string"
+                  },
+                  "exact": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When true the supplied tag set must match a series exactly instead of acting as a filter."
+                  }
+                },
+                "required": [
+                  "measurement",
+                  "start",
+                  "end"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deleted count"
+          },
+          "400": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cloud/projects/{project}/buckets/{bucket}/query": {
+      "post": {
+        "summary": "Run SQL against a bucket, with macro expansion",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bucket",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Result, with the resolved window echoed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cloud/projects/{project}/buckets/{bucket}/schema": {
+      "get": {
+        "summary": "Measurements, tag values and field types",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bucket",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schema"
+          },
+          "404": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cloud/projects/{project}/buckets/{bucket}/export": {
+      "get": {
+        "summary": "Full JSON snapshot of a bucket",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bucket",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Snapshot"
+          },
+          "404": {
+            "description": "Request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
-        "scheme": "bearer"
+        "scheme": "bearer",
+        "description": "The shared FLUXDB_TOKEN. Grants server-wide administration over /api/v1."
+      },
+      "apiKeyAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "A project API key, `fdbk_{id}_{secret}`, created in the console. Scoped to one project and to read and/or write."
+      },
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "flux_session",
+        "description": "HttpOnly session cookie issued by the sign-in endpoints. Only its SHA-256 is stored server-side."
       }
     },
     "schemas": {
@@ -999,6 +1990,98 @@
             }
           }
         }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Written for a human."
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable reason on control-plane responses: invalid_request, unauthenticated, forbidden, not_found, conflict, quota_exceeded, rate_limited, internal."
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "QueryResult": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {}
+            },
+            "description": "Timestamps and 64-bit integers are decimal strings."
+          },
+          "execution_time_ms": {
+            "type": "number"
+          },
+          "window": {
+            "type": "object",
+            "description": "The resolved range the macros expanded to.",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "interval": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "QueryRequest": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "One SELECT from the documented subset. May contain $timeFilter, $interval, $from and $to."
+          },
+          "from": {
+            "type": "string",
+            "description": "Inclusive start, decimal nanoseconds. Defaults to six hours ago."
+          },
+          "to": {
+            "type": "string",
+            "description": "Inclusive end, decimal nanoseconds. Defaults to now."
+          },
+          "interval": {
+            "type": "string",
+            "enum": [
+              "10s",
+              "30s",
+              "1m",
+              "2m",
+              "5m",
+              "10m",
+              "15m",
+              "30m",
+              "1h",
+              "3h",
+              "6h",
+              "12h",
+              "1d"
+            ],
+            "description": "Bucket width for $interval. Chosen automatically when omitted."
+          }
+        },
+        "required": [
+          "query"
+        ]
       }
     }
   }

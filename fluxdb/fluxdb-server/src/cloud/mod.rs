@@ -792,7 +792,7 @@ impl Cloud {
             .ok_or_else(|| unauthorized("This API key's project no longer exists"))?;
         // One write per minute at most, so ingestion is not slowed by metadata
         // updates on every request.
-        if key.last_used_at.map_or(true, |at| now_ms() - at > 60_000) {
+        if key.last_used_at.is_none_or(|at| now_ms() - at > 60_000) {
             key.last_used_at = Some(now_ms());
             let _ = self.store.save(&key).await;
         }

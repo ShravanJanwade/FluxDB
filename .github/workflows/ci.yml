@@ -1,8 +1,17 @@
 name: Verify FluxDB
 on: [push, pull_request]
+
+# A second push to the same branch supersedes the first; there is no value in
+# finishing a run for a commit nobody will look at.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  rust:
+  engine:
+    name: Engine and control plane (${{ matrix.os }})
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
@@ -10,15 +19,26 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fluxdb
       - run: cargo fmt --all -- --check
         working-directory: fluxdb
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+        working-directory: fluxdb
+      # Covers the storage engine, the SQL subset, and the end-to-end control
+      # plane tests that drive the real router over a temporary SQLite store.
       - run: cargo test --workspace --locked
         working-directory: fluxdb
       - run: cargo build --release --locked -p fluxdb-server
         working-directory: fluxdb
+      # Creates an isolated authenticated server and exercises CRUD, exact
+      # integer round trips, SQL, restarts, restore and both SDKs.
       - run: python scripts/smoke.py
-  studio:
+
+  console:
+    name: Console
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,7 +49,45 @@ jobs:
           cache-dependency-path: fluxdb-studio/package-lock.json
       - run: npm ci
         working-directory: fluxdb-studio
-      - run: npm run build
+      - run: npm run typecheck
+        working-directory: fluxdb-studio
+      - run: npx prettier --check "src/**/*.{ts,tsx,css}" "tests/**/*.{ts,tsx}"
         working-directory: fluxdb-studio
       - run: npm test
         working-directory: fluxdb-studio
+      - run: npm run build
+        working-directory: fluxdb-studio
+
+  container:
+    name: Container image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The deployment is one image containing the engine, the control plane and
+      # the built console, so building it is the only way to know a deploy will
+      # not fail after a green test run.
+      - run: docker build --tag fluxdb:ci .
+      - name: Boot the image and check it serves the API and the console
+        run: |
+          docker run --detach --name fluxdb-ci \
+            --env FLUXDB_TOKEN="$(openssl rand -hex 32)" \
+            --env FLUXDB_SESSION_SECRET="$(openssl rand -hex 32)" \
+            --publish 8086:8086 fluxdb:ci
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:8086/health > /dev/null; then break; fi
+            sleep 2
+          done
+          curl --silent --fail http://127.0.0.1:8086/health
+          # The control plane must be up, with its showcase workspace seeded.
+          curl --silent --fail http://127.0.0.1:8086/api/cloud/config | grep -q demo_project_id
+          # The console is served from the same process, and a deep link has to
+          # answer 200 with the application shell.
+          curl --silent --fail http://127.0.0.1:8086/ | grep -q '<div id="root">'
+          curl --silent --fail http://127.0.0.1:8086/app/p/demofluxdb99/query > /dev/null
+          # And the token API must not be reachable without the token.
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            http://127.0.0.1:8086/api/v1/databases)" = "401"
+      - if: always()
+        run: docker logs fluxdb-ci || true
+      - if: always()
+        run: docker rm --force fluxdb-ci || true

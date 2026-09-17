@@ -249,7 +249,7 @@ impl QueryExecutor {
                         }
                         dp.fields
                             .get(name)
-                            .map(|v| Self::field_to_query_value(v))
+                            .map(Self::field_to_query_value)
                             .or_else(|| key.tags.get(name).cloned().map(QueryValue::String))
                             .unwrap_or(QueryValue::Null)
                     })
@@ -496,7 +496,7 @@ impl QueryExecutor {
                 let mut sorted = values.to_vec();
                 sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
                 let mid = sorted.len() / 2;
-                if sorted.len() % 2 == 0 {
+                if sorted.len().is_multiple_of(2) {
                     QueryValue::Float((sorted[mid - 1] + sorted[mid]) / 2.0)
                 } else {
                     QueryValue::Float(sorted[mid])

@@ -73,8 +73,8 @@ impl<K: Ord + Clone, V: Clone> SkipList<K, V> {
 
         // Increase level if needed
         if level > self.level {
-            for i in self.level..level {
-                update[i] = Some(self.head.as_mut() as *mut Node<K, V>);
+            for slot in update.iter_mut().take(level).skip(self.level) {
+                *slot = Some(self.head.as_mut() as *mut Node<K, V>);
             }
             self.level = level;
         }
@@ -84,9 +84,9 @@ impl<K: Ord + Clone, V: Clone> SkipList<K, V> {
         let new_node_ptr = NonNull::new(Box::into_raw(new_node)).unwrap();
 
         // Update forward pointers
-        for i in 0..level {
+        for (i, slot) in update.iter().enumerate().take(level) {
             unsafe {
-                if let Some(prev) = update[i] {
+                if let Some(prev) = *slot {
                     (*new_node_ptr.as_ptr()).forward[i] = (*prev).forward[i];
                     (*prev).forward[i] = Some(new_node_ptr);
                 }

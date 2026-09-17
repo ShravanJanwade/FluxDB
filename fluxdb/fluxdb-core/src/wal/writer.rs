@@ -5,7 +5,7 @@ use crate::{FluxError, Result};
 use parking_lot::Mutex;
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufWriter, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
@@ -174,13 +174,13 @@ impl WalWriter {
         Ok(max_id)
     }
 
-    fn open_segment(dir: &PathBuf, segment_id: u64) -> Result<File> {
+    fn open_segment(dir: &Path, segment_id: u64) -> Result<File> {
         let path = dir.join(format!("wal_{:020}.log", segment_id));
         OpenOptions::new()
             .create(true)
             .append(true)
             .open(&path)
-            .map_err(|e| FluxError::Io(e))
+            .map_err(FluxError::Io)
     }
 }
 

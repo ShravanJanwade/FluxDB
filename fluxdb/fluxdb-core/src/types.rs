@@ -271,8 +271,10 @@ pub enum AggregateFunction {
 }
 
 impl AggregateFunction {
-    /// Parse from string
-    pub fn from_str(s: &str) -> Option<Self> {
+    /// Parse an aggregate name as it appears in SQL. Deliberately not
+    /// `FromStr`: an unknown name is not an error here, it simply means the
+    /// token was not an aggregate.
+    pub fn parse_name(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "count" => Some(AggregateFunction::Count),
             "sum" => Some(AggregateFunction::Sum),
@@ -317,9 +319,12 @@ mod tests {
 
     #[test]
     fn test_field_value() {
-        let f = FieldValue::Float(3.14);
-        assert_eq!(f.as_f64(), Some(3.14));
-        assert_eq!(f.as_i64(), Some(3));
+        // Deliberately not 3.14: clippy reads that as a mangled PI, and the
+        // point here is only that a float round-trips and that the integer
+        // view truncates towards zero rather than rounding.
+        let f = FieldValue::Float(42.5);
+        assert_eq!(f.as_f64(), Some(42.5));
+        assert_eq!(f.as_i64(), Some(42));
 
         let i = FieldValue::Integer(42);
         assert_eq!(i.as_f64(), Some(42.0));

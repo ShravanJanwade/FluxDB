@@ -1,20 +1,39 @@
 # Architecture and engineering notes
 
-FluxDB is a single-process, single-node time-series database. Rust owns persistence and query execution; the React browser console is an HTTP client. Nginx provides the same-origin production web entry point.
+FluxDB is a single-process, single-node time-series database with a
+multi-tenant control plane on top. Rust owns persistence, query execution,
+authorization and - in a deployment - serving the browser console's static
+files. There is no reverse proxy in the deployment: one process, one port.
 
 ```mermaid
 flowchart LR
-  App[Application / SDK] --> HTTP[Axum HTTP API]
-  Browser[React console] --> Proxy[Nginx or Vite proxy]
-  Proxy --> HTTP
-  HTTP --> Engine[Database registry]
+  Agent[Agent / SDK] -->|project API key| Ingest[/api/ingest/]
+  Browser[React console] -->|session cookie| Cloud[/api/cloud/]
+  Browser -->|static files| Static[Console assets]
+  CLI[CLI / self-hosted client] -->|shared token| V1[/api/v1/]
+  Ingest --> Tenancy[Tenancy resolution]
+  Cloud --> Tenancy
+  Tenancy -->|role checked, bucket id to namespace| Engine[Database registry]
+  V1 -->|names databases directly| Engine
+  Cloud <--> Meta[(Control-plane store)]
   Engine --> WAL[Checksummed WAL]
   WAL --> Mem[Ordered memtable]
   Mem --> SST[Typed compressed SSTables]
   SST --> Query[Snapshot merge / SQL executor]
   Mem --> Query
-  Query --> HTTP
+  Query --> Engine
 ```
+
+Three request surfaces reach the same engine:
+
+- **`/api/cloud`** - the console, authenticated by a session cookie. Data is
+  addressed as project plus bucket; the caller can never name a database.
+- **`/api/ingest`** - agents and SDKs, authenticated by a project API key with
+  read and write scopes.
+- **`/api/v1`** - the single-tenant surface, authenticated by one shared token.
+  It names engine databases directly and so sits *underneath* the tenancy
+  boundary, which is why a server with accounts enabled always keeps a token in
+  force. This is what a self-hosted deployment and the offline CLI use.
 
 ## Data and consistency
 
@@ -55,15 +74,156 @@ The public query endpoint accepts one SELECT statement. It supports field/tag pr
 
 The storage format contains exact values, but numeric aggregate calculations use floating-point arithmetic. Avoid treating an aggregate sum of very large integers as an exact accounting result.
 
+## Control plane and tenancy
+
+The engine knows only about databases. Accounts, organizations, projects,
+buckets, roles, API keys, dashboards, monitors and the audit trail live in the
+control plane, and the boundary between them is a naming rule.
+
+Each project owns the prefix `t{project_id}_` of engine database names, where
+`project_id` is twelve base-32 characters. A bucket record stores both its
+user-facing name and its physical `namespace`. Resolving a request means: look
+up the bucket by id, confirm it is a child of the named project, look up the
+caller's membership in that project's organization, check the role against the
+operation, and only then open `namespace`. No code path accepts a database name
+from a caller.
+
+Two consequences are worth stating. Unauthorized reads answer 404 rather than
+403, so project and bucket ids cannot be probed for existence. And bucket names
+are validated against the engine's character set and length budget at creation
+time - 48 characters, leaving room for the prefix inside the engine's 64-byte
+limit - so a namespace can never be constructed that the engine would reject
+later.
+
+Roles are ordered: viewer reads; member also writes and manages buckets,
+dashboards and monitors; admin also manages projects, API keys and members;
+owner also renames and deletes the organization. The shared showcase project is
+marked `demo` and refuses every mutation regardless of role.
+
+### The metadata store
+
+Control-plane volume is small and its records are read far more often than they
+are written, but it has one hard requirement: it must run unchanged on a
+developer's laptop and on managed Postgres, because a hosted container's
+filesystem does not survive a redeploy and losing accounts is not a survivable
+failure.
+
+Records are therefore stored as typed JSON documents in a single table with
+explicit secondary index columns - `kind`, `id`, `parent`, `owner`, `lookup` -
+and all validation lives in typed Rust structs. SQL is limited to the subset
+both engines accept, which keeps exactly three functions backend-specific
+(execute, fetch, count) instead of every query. Placeholders are written `?` and
+rewritten to `$n` for Postgres.
+
+Uniqueness is enforced by a unique index on `(kind, lookup)` rather than by
+read-then-write checks: duplicate email addresses, organization slugs, bucket
+names within a project and API key ids are all races the database wins. NULL
+lookups are distinct in both engines, so records with no natural key simply do
+not participate.
+
+The trade-off is that there are no foreign keys and no relational queries over
+control-plane data. Cascading deletes are written explicitly, and a stranded
+record is logged rather than silently left. For this volume that is the right
+exchange; a control plane with reporting requirements would want real tables.
+
+### Sessions and credentials
+
+Passwords use Argon2id with per-password salts. Sign-in is rate limited per
+account and per client address by in-process fixed-window counters, and the
+unknown-account branch verifies against a fixed dummy hash so a missing account
+cannot be distinguished by response timing.
+
+A session is a 256-bit random token in an `HttpOnly`, `SameSite=Lax` cookie,
+with `Secure` applied whenever the deployment is reached over HTTPS. Only the
+SHA-256 of the cookie value is stored, so a leaked control-plane database does
+not hand over live sessions. `SameSite=Lax` blocks cross-site form posts, and
+mutating requests additionally have their `Origin` checked against the
+deployment's base URL and the configured browser origins.
+
+API key secrets are 256 random bits stored as a SHA-256 digest. A
+password-stretching KDF is deliberately not used: it would add tens of
+milliseconds to every ingest request and buys nothing against a secret of that
+size. Revocation marks the key rather than deleting it, so its audit trail and
+last-used time survive. Last-used is written at most once a minute so metadata
+updates do not slow ingestion.
+
+GitHub sign-in uses the authorization-code flow. The state parameter carries a
+nonce and the return path and is HMAC-signed; the nonce is also set as a
+short-lived cookie and compared on return, so a state value replayed in another
+browser fails. Return paths are restricted to same-origin paths, which closes
+the open redirect that an OAuth round trip otherwise invites.
+
+### Guest workspaces
+
+A guest account is created without credentials, gets its own organization with a
+private writable sandbox seeded from the sample generator, and expires after 24
+hours. A background sweep reclaims expired accounts and everything below them,
+including their engine databases. Anonymous creation is rate limited per address
+and capped globally, so the shared instance's working set stays bounded.
+
+Guests also receive viewer membership in the shared showcase organization, which
+is how every visitor - guest or registered - sees the same read-only fleet.
+
+### Monitors
+
+A monitor is a stored query, a comparison and a threshold. One background sweep
+per minute evaluates every enabled monitor by running its query and taking the
+first numeric cell of the first row. A query returning no rows leaves the
+monitor in `unknown` rather than treating absence as zero, because "no data" and
+"zero" mean different things when something has stopped reporting.
+
+Only state transitions are recorded, so a monitor that stays in breach produces
+one alert rather than one per sweep, and the first evaluation of a healthy
+monitor is not announced as a recovery. A monitor's query is validated by
+running it once at creation, so it cannot be saved in a state where it silently
+never evaluates. There is no delivery mechanism - alerts are recorded and shown
+in the console; mail or webhooks would be the next thing to add.
+
+### Query macros
+
+The SQL subset has no `now()`, so a stored query carries no notion of "recent".
+The query endpoints expand `$timeFilter`, `$interval`, `$from` and `$to` from
+the range the caller sends, and echo the resolved window back in the response.
+That is what lets one saved dashboard panel serve every range, and it means a
+chart's axis and its data can never disagree. Accepted interval widths are an
+explicit list, so a caller cannot ask for a width that would materialize
+millions of groups.
+
+The same substitution exists in the browser for self-hosted connections,
+because a self-hosted server knows nothing about the macros. Keeping one
+implementation on each side is deliberate: a panel must render identically
+wherever its data lives.
+
+### Self-hosted connections
+
+The console can target a FluxDB the visitor runs. Two modes, with different
+trust:
+
+**Browser-direct** is the default and the right choice for a server on the
+visitor's own machine. The browser talks to it over `/api/v1`; the token is held
+in memory for the tab, is never written to storage and never reaches the host
+serving the console. The cost - re-entering it after a reload - is stated in the
+UI rather than hidden.
+
+**Proxied** exists for a server the browser cannot reach directly. The control
+plane forwards the request, with the token supplied per request and never
+stored. Only `/api/v1` paths and the documented methods are forwarded, response
+bodies are size-capped, and the target is resolved and screened against
+private, loopback, link-local and carrier-grade-NAT ranges before each forward.
+Without that screening a proxy endpoint is an SSRF primitive pointed at the
+deployment's own network.
+
 ## HTTP, security, and observability
 
 The versioned API has a 2 MiB body limit, 10,000-point batch limit, paginated reads up to 1,000 points, and a 32-request concurrency gate. Saturation returns 429. Input errors return structured errors; authentication failures return 401. CRUD handlers run storage work on Tokio's blocking pool.
 
-Bearer authentication is optional on loopback and mandatory for non-loopback server binding. One token grants server-wide administration: there are no separate users, scopes, or read-only credentials. Terminate TLS at a reverse proxy, protect the token, and operate within that trust model. CORS is an explicit browser-origin allowlist, not an authentication boundary.
+Bearer authentication on `/api/v1` is optional only for a loopback-bound server with the control plane switched off. It is mandatory for any non-loopback bind, and mandatory whenever accounts exist - if the operator sets no token in that case, one is generated and logged at startup, because that surface names engine databases directly and an anonymous request there would return any account's data. One `/api/v1` token grants server-wide administration: it has no users, scopes or read-only variants. Per-account and per-project authorization is the control plane's job. CORS is an explicit browser-origin allowlist, not an authentication boundary.
+
+When `FLUXDB_STATIC_DIR` is set the server also serves the console: hashed asset paths are immutable for a year, `index.html` is never cached, and unknown paths fall back to `index.html` with a 200 so a deep link reaches the browser router. Unmatched paths under `/api` answer a JSON 404 instead, so a broken client gets something it can parse. The static service is deliberately composed outside the administration-token middleware - the browser has to fetch the application shell before anyone has signed in.
 
 Request telemetry stores the latest 2,000 samples in memory. Each sample includes server duration, route, database when applicable, timestamp, and status. Health, stats, and telemetry polling are excluded. Other browser requests, including schema/data refreshes, count as real traffic. Samples reset on process restart and do not constitute a persistent monitoring system.
 
-The console refreshes every five seconds, reports connectivity, scopes charts to the selected database/time window, and keeps credentials in memory. Point charts visualize the current data page; the table retains exact nanosecond strings even though chart axes use milliseconds.
+The console classifies query results rather than being configured with a schema: a result with a time column becomes one series per tag value, a result without one becomes categories, and a result with no numeric column is reported as unplottable. Charts read their colours from CSS custom properties and are recreated when the theme changes. ECharts is driven directly rather than through a React binding, with a `ResizeObserver` as the single source of truth for canvas size - a chart mounted before its container is laid out otherwise keeps drawing into the width it saw at initialisation. Tables retain exact nanosecond and integer strings even though chart axes use milliseconds.
 
 ## Scaling and operational boundaries
 
@@ -74,6 +234,13 @@ Snapshot export is a consistent logical view, but restore is a sequence of batch
 The repository includes regression tests, an isolated authenticated end-to-end harness, SDK checks, a reproducible HTTP benchmark, container definitions, and CI configuration. These provide reviewable evidence; they do not substitute for load testing, fault injection, independent security review, or successful deployment-host validation.
 
 ## Gemini agent
+
+The assistant is reachable wherever `/api/v1` is: a self-hosted server, or a
+deployment whose operator holds the administration token. It has not been
+extended to tenant-scoped buckets, so accounts on a hosted deployment do not see
+it. Making it tenant-aware means resolving a bucket id to a namespace before the
+tool loop runs and mapping proposed operations back to bucket names on the way
+out.
 
 The browser calls the authenticated `/api/v1/assistant/chat` route. Rust sends the bundled project instructions, selected database/page, and bounded conversation to Gemini's native generateContent function-calling API. The provider host is fixed; redirects and arbitrary provider URLs are disabled. A server `GEMINI_API_KEY` or per-request `x-gemini-api-key` supplies credentials. Secrets are never returned, persisted by the assistant, or logged. Browser session keys are memory-only; server keys are loaded from environment or a local .env at startup.
 

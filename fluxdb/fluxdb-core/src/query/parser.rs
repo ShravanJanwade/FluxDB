@@ -479,7 +479,7 @@ impl QueryParser {
             } => {
                 let field = Self::extract_field_name(expr)?;
                 let values: Result<Vec<QueryValue>> =
-                    list.iter().map(|e| Self::parse_value_expr(e)).collect();
+                    list.iter().map(Self::parse_value_expr).collect();
                 Ok(Condition::In {
                     field,
                     values: values?,
@@ -891,7 +891,7 @@ impl QueryParser {
     // ========================================================================
 
     fn parse_delete(
-        from: &Vec<sqlparser::ast::TableWithJoins>,
+        from: &[sqlparser::ast::TableWithJoins],
         selection: &Option<Expr>,
     ) -> Result<Statement> {
         // In sqlparser 0.41.0, DELETE uses Vec<TableWithJoins> directly

@@ -15,7 +15,6 @@ use std::sync::Arc;
 use tracing::info;
 
 /// FluxDB storage engine
-
 pub struct StorageEngine {
     _directory_lock: std::fs::File,
     config: StorageConfig,
@@ -25,7 +24,6 @@ pub struct StorageEngine {
 
 impl StorageEngine {
     /// Create a new storage engine
-
     pub fn new(config: StorageConfig) -> Result<Self> {
         std::fs::create_dir_all(&config.data_dir)?;
 
@@ -54,7 +52,6 @@ impl StorageEngine {
     }
 
     /// Create a new database
-
     pub fn create_database(&self, name: &str) -> Result<Arc<Database>> {
         Self::validate_name(name)?;
 
@@ -85,7 +82,6 @@ impl StorageEngine {
     }
 
     /// Get or create a database
-
     pub fn get_or_create_database(&self, name: &str) -> Result<Arc<Database>> {
         // Check if exists
 
@@ -121,13 +117,11 @@ impl StorageEngine {
     }
 
     /// Get a database by name
-
     pub fn get_database(&self, name: &str) -> Option<Arc<Database>> {
         self.databases.read().get(name).cloned()
     }
 
     /// Drop a database
-
     pub fn drop_database(&self, name: &str) -> Result<()> {
         let mut databases = self.databases.write();
 
@@ -179,7 +173,6 @@ impl StorageEngine {
     }
 
     /// List all databases
-
     pub fn list_databases(&self) -> Vec<String> {
         let mut names: Vec<_> = self.databases.read().keys().cloned().collect();
 
@@ -188,7 +181,6 @@ impl StorageEngine {
     }
 
     /// Write points to a database
-
     pub fn write(&self, database: &str, points: &[Point]) -> Result<()> {
         let db = self.get_or_create_database(database)?;
 
@@ -196,7 +188,6 @@ impl StorageEngine {
     }
 
     /// Execute a query
-
     pub fn query(&self, database: &str, sql: &str) -> Result<QueryResult> {
         let db = self
             .get_database(database)
@@ -206,7 +197,6 @@ impl StorageEngine {
     }
 
     /// Flush all databases
-
     pub fn flush_all(&self) -> Result<()> {
         let databases = self.databases.read();
 
@@ -218,7 +208,6 @@ impl StorageEngine {
     }
 
     /// Get engine statistics
-
     pub fn stats(&self) -> EngineStats {
         let databases = self.databases.read();
 
@@ -279,9 +268,7 @@ impl StorageEngine {
 }
 
 /// Storage engine statistics
-
 #[derive(Debug, Clone)]
-
 pub struct EngineStats {
     pub database_count: usize,
 
@@ -293,7 +280,6 @@ pub struct EngineStats {
 }
 
 #[cfg(test)]
-
 mod tests {
 
     use super::*;
@@ -303,7 +289,6 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-
     fn test_storage_engine() {
         let temp_dir = TempDir::new().unwrap();
 

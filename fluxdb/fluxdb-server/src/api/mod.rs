@@ -694,10 +694,8 @@ fn parse_field_value(s: &str) -> Result<FieldValue, String> {
     }
 
     // Integer (ends with 'i')
-    if s.ends_with('i') {
-        let n = s[..s.len() - 1]
-            .parse::<i64>()
-            .map_err(|_| "Invalid integer")?;
+    if let Some(digits) = s.strip_suffix('i') {
+        let n = digits.parse::<i64>().map_err(|_| "Invalid integer")?;
         return Ok(FieldValue::Integer(n));
     }
 
