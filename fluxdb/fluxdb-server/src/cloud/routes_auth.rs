@@ -725,22 +725,18 @@ async fn github_exchange(
     };
 
     let (session_token, lifetime) = cloud.start_session(&account, user_agent(headers)).await?;
+    let secure = cloud.secure_cookies(headers);
+    // Sets the session and clears the short-lived OAuth nonce. Both must reach
+    // the browser, which is why this appends rather than returning an array of
+    // (SET_COOKIE, _) pairs — that form keeps only the last, and dropping the
+    // session bounced a successful sign-in straight back to /login.
+    let cookies = auth::cookie_headers([
+        auth::cookie(auth::SESSION_COOKIE, &session_token, lifetime, secure),
+        auth::cookie(auth::OAUTH_COOKIE, "", 0, secure),
+    ])
+    .map_err(|e| internal(format!("cookie was not a valid header value: {e}")))?;
     Ok((
-        [
-            (
-                SET_COOKIE,
-                auth::cookie(
-                    auth::SESSION_COOKIE,
-                    &session_token,
-                    lifetime,
-                    cloud.secure_cookies(headers),
-                ),
-            ),
-            (
-                SET_COOKIE,
-                auth::cookie(auth::OAUTH_COOKIE, "", 0, cloud.secure_cookies(headers)),
-            ),
-        ],
+        cookies,
         Redirect::temporary(&safe_next(Some(next.to_string()))),
     )
         .into_response())

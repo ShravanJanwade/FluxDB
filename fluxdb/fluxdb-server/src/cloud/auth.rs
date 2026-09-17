@@ -4,6 +4,8 @@ use argon2::password_hash::{
     rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString,
 };
 use argon2::Argon2;
+use axum::http::header::{InvalidHeaderValue, SET_COOKIE};
+use axum::http::HeaderMap;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine as _;
 use hmac::{Hmac, Mac};
@@ -175,6 +177,22 @@ impl Secrets {
 /// `Set-Cookie` value for a session or OAuth-state cookie. `Secure` is applied
 /// whenever the deployment is reached over HTTPS; a plain-HTTP local run must
 /// not set it or the browser drops the cookie.
+/// Collect cookie strings into a header map that emits every one of them.
+///
+/// Axum's `IntoResponseParts` for an array of `(HeaderName, _)` pairs inserts
+/// each pair, so two `Set-Cookie` entries in that form leave only the last.
+/// Appending is the only shape that sends both.
+pub fn cookie_headers<I>(values: I) -> Result<HeaderMap, InvalidHeaderValue>
+where
+    I: IntoIterator<Item = String>,
+{
+    let mut headers = HeaderMap::new();
+    for value in values {
+        headers.append(SET_COOKIE, value.parse()?);
+    }
+    Ok(headers)
+}
+
 pub fn cookie(name: &str, value: &str, max_age: i64, secure: bool) -> String {
     let mut parts = vec![
         format!("{name}={value}"),

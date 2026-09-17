@@ -1351,3 +1351,76 @@ async fn the_console_is_served_from_the_same_process_as_the_api() {
         "{body}"
     );
 }
+
+/// The GitHub callback sets the session cookie and clears the OAuth nonce in
+/// one response. Axum's `IntoResponseParts` for an array of header pairs
+/// *inserts* each pair, so that form keeps only the last — which silently
+/// dropped the session and bounced a successful sign-in back to /login.
+#[tokio::test]
+async fn setting_two_cookies_in_one_response_emits_both() {
+    use axum::http::header::SET_COOKIE;
+    use axum::response::IntoResponse;
+
+    // The shape the callback uses.
+    let headers = fluxdb_server::cloud::auth::cookie_headers([
+        "flux_session=abc; Path=/; HttpOnly".to_string(),
+        "flux_oauth=; Path=/; Max-Age=0".to_string(),
+    ])
+    .expect("valid cookie values");
+    let response = (headers, axum::response::Redirect::temporary("/app")).into_response();
+    let sent: Vec<_> = response
+        .headers()
+        .get_all(SET_COOKIE)
+        .iter()
+        .map(|v| v.to_str().unwrap().to_string())
+        .collect();
+    assert_eq!(
+        sent.len(),
+        2,
+        "both cookies must reach the browser: {sent:?}"
+    );
+    assert!(sent.iter().any(|c| c.starts_with("flux_session=abc")));
+    assert!(sent.iter().any(|c| c.starts_with("flux_oauth=;")));
+
+    // The shape that caused the bug, asserted so nobody reintroduces it.
+    let overwritten = (
+        [
+            (SET_COOKIE, "first=1".to_string()),
+            (SET_COOKIE, "second=2".to_string()),
+        ],
+        axum::response::Redirect::temporary("/app"),
+    )
+        .into_response();
+    assert_eq!(
+        overwritten.headers().get_all(SET_COOKIE).iter().count(),
+        1,
+        "an array of header pairs overwrites; use auth::cookie_headers instead"
+    );
+}
+
+/// The console and landing page both link to the OpenAPI document. It
+/// describes the API rather than exposing it, so the administration token gate
+/// must not cover it — gating it answered 401 for every visitor.
+#[tokio::test]
+async fn the_openapi_document_is_readable_without_a_token() {
+    let (_dir, app) = app().await;
+    let mut anonymous = Client::new(&app);
+
+    let (status, document) = anonymous.send("GET", "/api/v1/openapi.json", None).await;
+    assert_eq!(status, StatusCode::OK, "OpenAPI must be public");
+    assert!(
+        document["openapi"]
+            .as_str()
+            .is_some_and(|v| v.starts_with('3')),
+        "a real document: {:?}",
+        document["openapi"]
+    );
+    assert!(
+        document["paths"].is_object(),
+        "a usable document, not a stub"
+    );
+
+    // The rest of /api/v1 stays behind the administration token.
+    let (status, _) = anonymous.send("GET", "/api/v1/databases", None).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+}

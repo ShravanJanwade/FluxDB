@@ -201,8 +201,13 @@ pub fn instrument(router: Router, monitor: Monitor) -> Router {
 /// public so orchestrators can probe the instance, and the cloud module runs
 /// its own account and API-key authorization for everything under its prefixes.
 fn public_path(path: &str) -> bool {
-    matches!(path, "/health" | "/ping" | "/api/v1/health")
-        || path.starts_with("/api/cloud/")
+    // The OpenAPI document describes the API rather than exposing any of it,
+    // and the console and landing page both link to it. Gating it behind the
+    // administration token made those links answer 401 for every visitor.
+    matches!(
+        path,
+        "/health" | "/ping" | "/api/v1/health" | "/api/v1/openapi.json"
+    ) || path.starts_with("/api/cloud/")
         || path.starts_with("/api/ingest/")
 }
 
