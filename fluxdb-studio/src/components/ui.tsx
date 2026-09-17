@@ -1,13 +1,14 @@
 /** Building blocks shared by every console screen. */
 
 import {
+  type ReactNode,
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 import * as echarts from "echarts/core";
 import { BarChart, LineChart } from "echarts/charts";
@@ -398,8 +399,30 @@ export function Menu({
   label: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [drop, setDrop] = useState<"down" | "up">("down");
   const container = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
+
+  // Decide the direction before paint, so a menu anchored low on the screen —
+  // the account menu sits at the foot of the sidebar — opens upward instead of
+  // running off the bottom of the viewport.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const decide = () => {
+      const anchor = container.current?.getBoundingClientRect();
+      const height = panel.current?.scrollHeight ?? 0;
+      if (!anchor) return;
+      const below = window.innerHeight - anchor.bottom;
+      const above = anchor.top;
+      // Only flip when there is genuinely more usable space above, so ordinary
+      // menus keep opening downward as expected.
+      setDrop(below < height + 16 && above > below ? "up" : "down");
+    };
+    decide();
+    window.addEventListener("resize", decide);
+    return () => window.removeEventListener("resize", decide);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -431,7 +454,11 @@ export function Menu({
         <ChevronDown size={14} aria-hidden className="menu-chevron" />
       </button>
       {open && (
-        <div className={`menu-panel menu-${align}`} role="menu">
+        <div
+          ref={panel}
+          className={`menu-panel menu-${align} menu-${drop}`}
+          role="menu"
+        >
           {children(close)}
         </div>
       )}

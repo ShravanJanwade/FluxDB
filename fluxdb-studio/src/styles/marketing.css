@@ -684,33 +684,57 @@
 
 .m-checklist li {
   display: grid;
+  /* Two columns for [icon][text]. A grid container blockifies its children, so
+     every item must hold exactly one icon and one span — loose text nodes and
+     inline chips would each become a grid item and flow into the icon column. */
   grid-template-columns: 18px 1fr;
   gap: var(--space-3);
   align-items: start;
   color: var(--text-secondary);
   font-size: var(--text-base);
+  line-height: 1.65;
 }
 
 .m-checklist svg {
-  margin-top: 4px;
+  margin-top: 5px;
   color: var(--success);
 }
 
 .m-checklist code {
   background: var(--surface-active);
-  padding: 1px 5px;
+  padding: 0.05em 0.4em;
   border-radius: 4px;
+  /* Sized in em with a tight line-height so a chip cannot grow the line box
+     and push the rest of the paragraph out of alignment. */
+  font-size: 0.875em;
+  line-height: 1.4;
 }
 
 kbd {
   display: inline-block;
-  padding: 1px 5px;
+  padding: 0.05em 0.45em;
   border: 1px solid var(--border-strong);
   border-bottom-width: 2px;
   border-radius: 5px;
   background: var(--surface);
-  font-size: 0.75rem;
+  color: var(--text);
+  font-size: 0.8em;
+  line-height: 1.45;
   font-family: var(--font);
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
+/* Keeps a shortcut together on one line, with its separator spaced evenly. */
+.m-keys {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25em;
+  white-space: nowrap;
+}
+
+.m-keys > span {
+  color: var(--text-muted);
 }
 
 .m-mock {

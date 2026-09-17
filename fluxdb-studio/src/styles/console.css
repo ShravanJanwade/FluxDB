@@ -48,7 +48,9 @@
   padding: var(--space-4) var(--space-3);
   background: var(--surface);
   border-right: 1px solid var(--border);
-  overflow-y: auto;
+  /* The column itself must not scroll, or the account block at its foot is
+     pushed below the fold on a short viewport. The nav scrolls instead. */
+  overflow: hidden;
   z-index: 30;
 }
 
@@ -150,7 +152,6 @@
 
 .menu-panel {
   position: absolute;
-  top: calc(100% + 6px);
   min-width: 250px;
   max-width: 330px;
   max-height: 60vh;
@@ -169,6 +170,43 @@
 
 .menu-end {
   right: 0;
+}
+
+/* Direction is chosen at open time by the Menu component: a trigger low on the
+   screen, such as the account menu at the foot of the sidebar, opens upward
+   rather than running off the viewport. */
+.menu-down {
+  top: calc(100% + 6px);
+  transform-origin: top center;
+  animation: menu-in 120ms ease-out;
+}
+
+.menu-up {
+  bottom: calc(100% + 6px);
+  transform-origin: bottom center;
+  animation: menu-in 120ms ease-out;
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(var(--menu-shift, -4px));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.menu-up {
+  --menu-shift: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-down,
+  .menu-up {
+    animation: none;
+  }
 }
 
 .menu-heading {
@@ -254,7 +292,14 @@
 .nav {
   display: grid;
   gap: var(--space-5);
+  /* align-content keeps the sections at the top rather than stretching them
+     over the free space; min-height: 0 lets this flex child shrink below its
+     content height, which is what allows it — and not the sidebar — to scroll. */
+  align-content: start;
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .nav-section {

@@ -871,28 +871,50 @@ function ConsoleTour() {
             lede="Pick a range, group by service, and read the answer. The workspace is organised the way you already think about infrastructure: organisation, project, bucket, measurement."
             align="left"
           />
+          {/* Each item keeps exactly two children: the icon and one span.
+              The li is a grid, and a grid container blockifies every child, so
+              loose text and inline <code>/<kbd> became separate grid items and
+              flowed through the icon column. */}
           <ul className="m-checklist">
             <li>
-              <Check size={16} aria-hidden /> Query workspace with saved
-              history, worked examples and results you can chart or export
+              <Check size={16} aria-hidden />
+              <span>
+                Query workspace with saved history, worked examples and results
+                you can chart or export
+              </span>
             </li>
             <li>
-              <Check size={16} aria-hidden /> Data explorer with schema
-              discovery, per-field charts and point-level edit and delete
+              <Check size={16} aria-hidden />
+              <span>
+                Data explorer with schema discovery, per-field charts and
+                point-level edit and delete
+              </span>
             </li>
             <li>
-              <Check size={16} aria-hidden /> Dashboards whose panels carry
-              <code>$timeFilter</code> and <code>$interval</code>, so one panel
-              serves every range
+              <Check size={16} aria-hidden />
+              <span>
+                Dashboards whose panels carry <code>$timeFilter</code> and{" "}
+                <code>$interval</code>, so one panel serves every range
+              </span>
             </li>
             <li>
-              <Check size={16} aria-hidden /> Members and roles, revocable API
-              keys, retention controls and an audit trail
+              <Check size={16} aria-hidden />
+              <span>
+                Members and roles, revocable API keys, retention controls and an
+                audit trail
+              </span>
             </li>
             <li>
-              <Check size={16} aria-hidden /> Light and dark, keyboard
-              navigation, and a command palette on <kbd>Ctrl</kbd>/<kbd>⌘</kbd>{" "}
-              <kbd>K</kbd>
+              <Check size={16} aria-hidden />
+              <span>
+                Light and dark, keyboard navigation, and a command palette on{" "}
+                <span className="m-keys">
+                  <kbd>Ctrl</kbd>
+                  <span aria-hidden>/</span>
+                  <kbd>⌘</kbd>
+                  <kbd>K</kbd>
+                </span>
+              </span>
             </li>
           </ul>
           <Link className="btn btn-primary" to="/login?demo=1">
