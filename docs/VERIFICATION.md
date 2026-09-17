@@ -81,6 +81,7 @@ session throughout.
 | Tenancy from outside | A key was refused a bucket in another project (404); malformed and unknown keys were refused (401); revocation took effect on the next request |
 | Instance health | 124 requests recorded, p50 10.4 ms, p95 460.6 ms, 0 % failed, with the latency and request charts populated |
 | Route sweep | All 13 console routes rendered their expected heading with no error state |
+| Built bundle, not just dev | The production build served by the release binary boots, renders the landing page with live figures, starts a guest session, and walks all 13 console routes with no console errors beyond the expected signed-out 401 |
 
 Defects found this way and fixed:
 
@@ -102,6 +103,21 @@ Defects found this way and fixed:
 - The original indigo-to-cyan chart palette failed the dark lightness band, at
   OKLCH L 0.69-0.84 against a 0.48-0.67 target — bright saturated lines on a
   near-black surface that are harder to separate, not easier.
+- **The first hosted deploy served a blank page.** Hand-splitting react away
+  from the rest of `node_modules` created a chunk cycle: `react-router-dom`
+  landed in the react chunk and pulled `@remix-run/router` into vendor, while
+  vendor's `lucide-react` imported react back. Rollup printed
+  `Circular chunk: vendor -> react -> vendor` and the bundle threw
+  `Cannot read properties of undefined (reading 'forwardRef')` on load.
+
+  Two process failures, not one. The build warned and the warning was missed
+  because only the last few lines of its output were read. And the built bundle
+  was verified with `curl` — status codes and content types, which were all
+  correct — rather than by loading it in a browser, which is the only thing that
+  would have caught it. Vite now throws on a circular chunk instead of warning,
+  and that guard was tested in both directions: exit 1 with the bad split, exit 0
+  with the good one. Booting the built bundle in a browser and walking all 13
+  console routes is now part of the browser checks below.
 
 ## Small local HTTP workload
 

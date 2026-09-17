@@ -31,23 +31,38 @@ export default defineConfig(({ mode }) => {
       // page, so its size is not on the critical path.
       chunkSizeWarningLimit: 700,
       rollupOptions: {
+        // A chunk cycle is not a style problem: one chunk evaluates before its
+        // dependency is initialised, so the bundle throws on load and ships a
+        // blank page. Rollup only warns, and a warning scrolls past in CI.
+        onwarn(warning, defaultHandler) {
+          if (warning.message?.includes("Circular chunk")) {
+            throw new Error(
+              `${warning.message}
+
+` +
+                "A chunk cycle ships a blank page: the first chunk to evaluate " +
+                "reads an uninitialised export from the other. Fix the " +
+                "manualChunks split instead of silencing this.",
+            );
+          }
+          defaultHandler(warning);
+        },
         output: {
           manualChunks(id) {
-            if (!id.includes("node_modules")) return;
-            // echarts and zrender import each other, so they belong in one
-            // chunk; splitting them produced a circular chunk graph.
+            // Only echarts is split out by hand, and only because it is a leaf:
+            // nothing else imports it, so it cannot form a cycle with another
+            // chunk. echarts and zrender import each other, so they share one.
+            //
+            // Everything else is left to Rollup. Hand-splitting react away from
+            // the rest of node_modules shipped a blank page: react-router-dom
+            // landed in the react chunk and pulled @remix-run/router into
+            // vendor, while vendor's lucide-react imported react back. Rollup
+            // warned "Circular chunk: vendor -> react -> vendor", and at
+            // runtime vendor evaluated first and read forwardRef off an
+            // uninitialised module.
             if (id.includes("/echarts/") || id.includes("/zrender/")) {
               return "charts";
             }
-            if (
-              id.includes("/react/") ||
-              id.includes("/react-dom/") ||
-              id.includes("/react-router") ||
-              id.includes("/scheduler/")
-            ) {
-              return "react";
-            }
-            return "vendor";
           },
         },
       },
