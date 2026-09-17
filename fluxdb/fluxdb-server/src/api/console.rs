@@ -1,5 +1,11 @@
-//! Browser-facing, versioned API. Timestamps and integer fields are decimal strings.
+//! Token-authenticated administration API (`/api/v1`).
+//!
+//! This is the surface a self-hosted FluxDB exposes: one shared bearer token
+//! grants full access to every database on the instance. It is what the CLI,
+//! the SDKs and the browser console's "connect your own server" path talk to.
+//! Per-account, per-project authorization lives in the `cloud` module instead.
 
+use super::data::{self, DataError};
 use super::{AppState, ErrorResponse};
 
 use axum::{
@@ -11,14 +17,11 @@ use axum::{
     Json, Router,
 };
 
-use fluxdb_core::{DataPoint, FieldValue, Fields, Point, SeriesKey, TimeRange};
-
 use serde::{Deserialize, Serialize};
-
 use serde_json::{json, Value};
 
 use std::{
-    collections::{BTreeMap, VecDeque},
+    collections::VecDeque,
     sync::{Arc, Mutex},
     time::Instant,
 };
@@ -43,6 +46,15 @@ fn internal(e: impl ToString) -> ApiError {
     )
 }
 
+/// Caller mistakes become 400 and storage failures become 500, so a client can
+/// tell "fix your request" apart from "retry later".
+pub(crate) fn from_data(error: DataError) -> ApiError {
+    match error {
+        DataError::Invalid(message) => bad(message),
+        DataError::Engine(message) => internal(message),
+    }
+}
+
 fn database(
     engine: &AppState,
     name: &str,
@@ -57,8 +69,11 @@ fn database(
     })
 }
 
+/// Bounded in-memory request history plus the shared-token check and a
+/// concurrency ceiling. The history is what the console's latency and error
+/// charts read; it is reset on restart and describes server processing time
+/// only.
 #[derive(Clone)]
-
 pub struct Monitor {
     started: Instant,
     samples: Arc<Mutex<VecDeque<Sample>>>,
@@ -67,7 +82,6 @@ pub struct Monitor {
 }
 
 #[derive(Clone, Serialize)]
-
 struct Sample {
     time: i64,
     duration_ms: f64,
@@ -84,6 +98,48 @@ impl Monitor {
             samples: Arc::new(Mutex::new(VecDeque::new())),
             token: std::env::var("FLUXDB_TOKEN").ok().filter(|s| !s.is_empty()),
         }
+    }
+
+    /// Record a request that was served outside this middleware, so cloud API
+    /// traffic shows up in the same latency history as `/api/v1` traffic.
+    pub fn record(
+        &self,
+        operation: String,
+        database: Option<String>,
+        status: u16,
+        duration_ms: f64,
+    ) {
+        let mut samples = self.samples.lock().unwrap_or_else(|e| e.into_inner());
+        if samples.len() == 2000 {
+            samples.pop_front();
+        }
+        samples.push_back(Sample {
+            time: chrono::Utc::now().timestamp_millis(),
+            duration_ms,
+            status,
+            operation,
+            database,
+        });
+    }
+
+    pub fn telemetry(&self) -> Value {
+        let samples = self
+            .samples
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        json!({
+            "uptime_seconds": self.started.elapsed().as_secs(),
+            "samples": samples,
+            "capacity": 2000,
+            "authentication_enabled": self.token.is_some(),
+        })
+    }
+}
+
+impl Default for Monitor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -121,37 +177,43 @@ pub fn routes() -> Router<AppState> {
 }
 
 pub fn instrument(router: Router, monitor: Monitor) -> Router {
-    router.route("/api/v1/telemetry", get({ let m = monitor.clone(); move || async move {
+    router
+        .route(
+            "/api/v1/telemetry",
+            get({
+                let monitor = monitor.clone();
+                move || async move { Json(monitor.telemetry()) }
+            }),
+        )
+        .layer(middleware::from_fn_with_state(monitor, observe))
+}
 
-        let samples = m.samples.lock().unwrap_or_else(|e| e.into_inner()).clone();
-
-        Json(json!({"uptime_seconds": m.started.elapsed().as_secs(), "samples": samples, "capacity":2000, "authentication_enabled":m.token.is_some()}))
-
-    }})).layer(middleware::from_fn_with_state(monitor, observe))
+/// Paths served without the shared administration token. Health checks are
+/// public so orchestrators can probe the instance, and the cloud module runs
+/// its own account and API-key authorization for everything under its prefixes.
+fn public_path(path: &str) -> bool {
+    matches!(path, "/health" | "/ping" | "/api/v1/health")
+        || path.starts_with("/api/cloud/")
+        || path.starts_with("/api/ingest/")
 }
 
 async fn observe(State(m): State<Monitor>, request: Request, next: Next) -> Response {
     let path = request.uri().path().to_string();
 
-    let public = path == "/health" || path == "/ping" || path == "/api/v1/health";
-
-    if request.method() != axum::http::Method::OPTIONS && !public {
+    if request.method() != axum::http::Method::OPTIONS && !public_path(&path) {
         if let Some(token) = &m.token {
             let expected = format!("Bearer {token}");
-
             let supplied = request
                 .headers()
                 .get("authorization")
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("");
-
             let diff = expected
                 .bytes()
                 .zip(supplied.bytes())
                 .fold(expected.len() ^ supplied.len(), |a, (b, c)| {
                     a | (b ^ c) as usize
                 });
-
             if diff != 0 {
                 return axum::response::IntoResponse::into_response((
                     StatusCode::UNAUTHORIZED,
@@ -165,11 +227,8 @@ async fn observe(State(m): State<Monitor>, request: Request, next: Next) -> Resp
         .strip_prefix("/api/v1/databases/")
         .and_then(|s| s.split('/').next())
         .map(str::to_string);
-
     let operation = format!("{} {}", request.method(), path);
-
     let start = Instant::now();
-
     let response = match m.active.try_acquire() {
         Ok(_permit) => next.run(request).await,
         Err(_) => axum::response::IntoResponse::into_response((
@@ -178,24 +237,21 @@ async fn observe(State(m): State<Monitor>, request: Request, next: Next) -> Resp
         )),
     };
 
-    if !path.ends_with("telemetry")
-        && !path.ends_with("health")
-        && !path.ends_with("stats")
-        && path != "/metrics"
-    {
-        let mut samples = m.samples.lock().unwrap_or_else(|e| e.into_inner());
-
-        if samples.len() == 2000 {
-            samples.pop_front();
-        }
-
-        samples.push_back(Sample {
-            time: chrono::Utc::now().timestamp_millis(),
-            duration_ms: start.elapsed().as_secs_f64() * 1000.,
-            status: response.status().as_u16(),
+    // Polling endpoints are excluded so the latency history describes real
+    // data work rather than the console's own refresh loop.
+    let excluded = path.ends_with("telemetry")
+        || path.ends_with("health")
+        || path.ends_with("stats")
+        || path == "/metrics"
+        || path.starts_with("/api/cloud/auth/")
+        || path.starts_with("/api/cloud/overview");
+    if !excluded {
+        m.record(
             operation,
-            database: db,
-        });
+            db,
+            response.status().as_u16(),
+            start.elapsed().as_secs_f64() * 1000.,
+        );
     }
 
     if response.status().is_client_error()
@@ -212,78 +268,15 @@ async fn observe(State(m): State<Monitor>, request: Request, next: Next) -> Resp
             .unwrap_or_default();
         return axum::response::IntoResponse::into_response((
             status,
-            Json(json!({"error":String::from_utf8_lossy(&bytes)})),
+            Json(json!({"error": String::from_utf8_lossy(&bytes)})),
         ));
     }
     response
 }
 
 #[derive(Deserialize)]
-
-pub(super) struct PointInput {
-    measurement: String,
-    #[serde(default)]
-    tags: BTreeMap<String, String>,
-    timestamp: String,
-    fields: BTreeMap<String, Value>,
-}
-
-impl PointInput {
-    pub(super) fn convert(self) -> Result<Point, ApiError> {
-        if self.measurement.is_empty() || self.measurement.len() > 256 || self.fields.is_empty() {
-            return Err(bad("Measurement and fields are required"));
-        }
-
-        let mut fields = Fields::new();
-
-        for (key, value) in self.fields {
-            if key.is_empty() {
-                return Err(bad("Field names cannot be empty"));
-            }
-
-            let value =
-                match value {
-                    Value::Bool(v) => FieldValue::Boolean(v),
-                    Value::String(v) => FieldValue::String(v),
-
-                    Value::Number(v) => {
-                        FieldValue::Float(v.as_f64().ok_or_else(|| bad("Invalid number"))?)
-                    }
-
-                    Value::Object(v) if v.len() == 1 && v.contains_key("integer") => {
-                        FieldValue::Integer(
-                            v["integer"]
-                                .as_str()
-                                .ok_or_else(|| bad("integer must be a decimal string"))?
-                                .parse()
-                                .map_err(bad)?,
-                        )
-                    }
-
-                    _ => return Err(bad(
-                        "Fields must be numbers, strings, booleans, or {integer: decimal string}",
-                    )),
-                };
-            fields.insert(key, value);
-        }
-
-        Ok(Point::new(
-            SeriesKey {
-                measurement: self.measurement,
-                tags: self.tags,
-            },
-            DataPoint {
-                timestamp: self.timestamp.parse().map_err(bad)?,
-                fields,
-            },
-        ))
-    }
-}
-
-#[derive(Deserialize)]
-
 struct Batch {
-    points: Vec<PointInput>,
+    points: Vec<data::PointInput>,
 }
 
 async fn write_points(
@@ -291,157 +284,42 @@ async fn write_points(
     Path(name): Path<String>,
     Json(batch): Json<Batch>,
 ) -> Result<Json<Value>, ApiError> {
-    if batch.points.is_empty() || batch.points.len() > 10000 {
-        return Err(bad("A batch must contain 1–10,000 points"));
-    }
-
-    let points: Vec<_> = batch
-        .points
-        .into_iter()
-        .map(PointInput::convert)
-        .collect::<Result<_, _>>()?;
-
-    let count = points.len();
+    let points = data::convert_batch(batch.points).map_err(from_data)?;
     let db = database(&engine, &name)?;
-
-    tokio::task::spawn_blocking(move || db.write(&points))
+    let written = tokio::task::spawn_blocking(move || data::write_batch(&db, &points))
         .await
         .map_err(internal)?
-        .map_err(internal)?;
-
-    Ok(Json(json!({"written":count})))
-}
-
-fn point_json(point: Point) -> Value {
-    let fields: BTreeMap<_, _> = point
-        .data
-        .fields
-        .0
-        .into_iter()
-        .map(|(k, v)| {
-            (
-                k,
-                match v {
-                    FieldValue::Float(v) => json!(v),
-                    FieldValue::Integer(v) => json!({"integer":v.to_string()}),
-                    FieldValue::String(v) => json!(v),
-                    FieldValue::Boolean(v) => json!(v),
-                },
-            )
-        })
-        .collect();
-
-    json!({"measurement":point.key.measurement,"tags":point.key.tags,"timestamp":point.data.timestamp.to_string(),"fields":fields})
-}
-
-#[derive(Deserialize)]
-
-struct ReadParams {
-    measurement: Option<String>,
-    start: Option<String>,
-    end: Option<String>,
-    limit: Option<usize>,
-    offset: Option<usize>,
+        .map_err(from_data)?;
+    Ok(Json(json!({"written": written})))
 }
 
 async fn points(
     State(engine): State<AppState>,
     Path(name): Path<String>,
-    Query(params): Query<ReadParams>,
+    Query(params): Query<data::ReadParams>,
 ) -> Result<Json<Value>, ApiError> {
-    let start: i64 = params
-        .start
-        .map(|s| s.parse())
-        .transpose()
-        .map_err(bad)?
-        .unwrap_or(i64::MIN);
-
-    let end: i64 = params
-        .end
-        .map(|s| s.parse())
-        .transpose()
-        .map_err(bad)?
-        .unwrap_or(i64::MAX);
-
-    if start > end {
-        return Err(bad("start must be <= end"));
-    }
-
     let db = database(&engine, &name)?;
-
-    let mut points = tokio::task::spawn_blocking(move || db.points())
+    let page = tokio::task::spawn_blocking(move || data::read_points(&db, &params))
         .await
         .map_err(internal)?
-        .map_err(internal)?;
-
-    points.retain(|p| {
-        params
-            .measurement
-            .as_ref()
-            .map(|m| m == &p.key.measurement)
-            .unwrap_or(true)
-            && p.data.timestamp >= start
-            && p.data.timestamp <= end
-    });
-
-    points.sort_by(|a, b| {
-        b.data
-            .timestamp
-            .cmp(&a.data.timestamp)
-            .then(a.key.cmp(&b.key))
-    });
-
-    let total = points.len();
-    let offset = params.offset.unwrap_or(0);
-    let limit = params.limit.unwrap_or(100).clamp(1, 1000);
-
-    Ok(Json(
-        json!({"total":total,"offset":offset,"limit":limit,"points":points.into_iter().skip(offset).take(limit).map(point_json).collect::<Vec<_>>()}),
-    ))
-}
-
-#[derive(Deserialize)]
-
-struct Delete {
-    measurement: String,
-    #[serde(default)]
-    tags: BTreeMap<String, String>,
-    start: String,
-    end: String,
-    #[serde(default)]
-    exact: bool,
+        .map_err(from_data)?;
+    Ok(Json(page))
 }
 
 async fn delete_points(
     State(engine): State<AppState>,
     Path(name): Path<String>,
-    Json(input): Json<Delete>,
+    Json(request): Json<data::DeleteRequest>,
 ) -> Result<Json<Value>, ApiError> {
-    let range = TimeRange::new(
-        input.start.parse().map_err(bad)?,
-        input.end.parse().map_err(bad)?,
-    );
-
-    if input.measurement.is_empty() || range.start > range.end {
-        return Err(bad(
-            "A measurement and valid inclusive time range are required",
-        ));
-    }
-
     let db = database(&engine, &name)?;
-
-    let deleted = tokio::task::spawn_blocking(move || {
-        db.delete_matching(&input.measurement, &input.tags, range, input.exact)
-    })
-    .await
-    .map_err(internal)?
-    .map_err(internal)?;
-
-    Ok(Json(json!({"deleted":deleted})))
+    let deleted = tokio::task::spawn_blocking(move || data::delete_points(&db, &request))
+        .await
+        .map_err(internal)?
+        .map_err(from_data)?;
+    Ok(Json(json!({"deleted": deleted})))
 }
 
 #[derive(Deserialize)]
-
 struct Sql {
     query: String,
 }
@@ -451,42 +329,12 @@ async fn sql(
     Path(name): Path<String>,
     Json(input): Json<Sql>,
 ) -> Result<Json<Value>, ApiError> {
-    if input.query.len() > 32768 {
-        return Err(bad("Query exceeds 32 KiB"));
-    }
-
     let db = database(&engine, &name)?;
-
-    let result = tokio::task::spawn_blocking(move || db.query(&input.query))
+    let result = tokio::task::spawn_blocking(move || data::run_sql(&db, &input.query))
         .await
         .map_err(internal)?
-        .map_err(bad)?;
-
-    let rows: Vec<_> = result
-        .rows
-        .into_iter()
-        .map(|r| {
-            let mut values = Vec::new();
-
-            if let Some(t) = r.time {
-                values.push(json!(t.to_string()));
-            }
-
-            if let Some(s) = r.series {
-                values.push(json!(s));
-            }
-
-            values.extend(r.values.into_iter().map(|v| match v {
-                fluxdb_core::query::QueryValue::Integer(i) => json!(i.to_string()),
-                other => json!(other),
-            }));
-            values
-        })
-        .collect();
-
-    Ok(Json(
-        json!({"columns":result.columns,"rows":rows,"execution_time_ms":result.execution_time_ms}),
-    ))
+        .map_err(from_data)?;
+    Ok(Json(result))
 }
 
 async fn schema(
@@ -494,55 +342,11 @@ async fn schema(
     Path(name): Path<String>,
 ) -> Result<Json<Value>, ApiError> {
     let db = database(&engine, &name)?;
-
-    let points = tokio::task::spawn_blocking(move || db.points())
+    let schema = tokio::task::spawn_blocking(move || data::schema_json(&db))
         .await
         .map_err(internal)?
-        .map_err(internal)?;
-
-    let mut measurements: BTreeMap<String, Value> = BTreeMap::new();
-
-    for point in points {
-        let value = measurements
-            .entry(point.key.measurement)
-            .or_insert_with(|| json!({"points":0,"fields":{},"tags":{}}));
-
-        value["points"] = json!(value["points"].as_u64().unwrap() + 1);
-
-        for (key, field) in point.data.fields.iter() {
-            let kind = json!(match field {
-                FieldValue::Float(_) => "float",
-                FieldValue::Integer(_) => "integer",
-                FieldValue::String(_) => "string",
-                FieldValue::Boolean(_) => "boolean",
-            });
-            let types = value["fields"]
-                .as_object_mut()
-                .unwrap()
-                .entry(key.clone())
-                .or_insert_with(|| json!([]))
-                .as_array_mut()
-                .unwrap();
-            if !types.contains(&kind) {
-                types.push(kind);
-            }
-        }
-
-        for (key, tag) in point.key.tags {
-            let tags = value["tags"]
-                .as_object_mut()
-                .unwrap()
-                .entry(key)
-                .or_insert_with(|| json!([]))
-                .as_array_mut()
-                .unwrap();
-            if !tags.contains(&json!(tag)) {
-                tags.push(json!(tag));
-            }
-        }
-    }
-
-    Ok(Json(json!({"measurements":measurements})))
+        .map_err(from_data)?;
+    Ok(Json(schema))
 }
 
 async fn flush(
@@ -550,12 +354,10 @@ async fn flush(
     Path(name): Path<String>,
 ) -> Result<StatusCode, ApiError> {
     let db = database(&engine, &name)?;
-
     tokio::task::spawn_blocking(move || db.flush())
         .await
         .map_err(internal)?
         .map_err(internal)?;
-
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -570,18 +372,21 @@ async fn compact(
         .map_err(internal)?;
     Ok(StatusCode::NO_CONTENT)
 }
+
 async fn retention(
     State(engine): State<AppState>,
     Path(name): Path<String>,
 ) -> Result<Json<Value>, ApiError> {
     Ok(Json(
-        json!({"seconds":database(&engine,&name)?.retention_seconds()}),
+        json!({"seconds": database(&engine, &name)?.retention_seconds()}),
     ))
 }
+
 #[derive(Deserialize)]
 struct Policy {
     seconds: u64,
 }
+
 async fn set_retention(
     State(engine): State<AppState>,
     Path(name): Path<String>,
@@ -592,21 +397,19 @@ async fn set_retention(
         .await
         .map_err(internal)?
         .map_err(bad)?;
-    Ok(Json(json!({"seconds":policy.seconds})))
+    Ok(Json(json!({"seconds": policy.seconds})))
 }
+
 async fn export(
     State(engine): State<AppState>,
     Path(name): Path<String>,
 ) -> Result<Json<Value>, ApiError> {
     let db = database(&engine, &name)?;
-    let retention = db.retention_seconds();
-    let points = tokio::task::spawn_blocking(move || db.points())
+    let snapshot = tokio::task::spawn_blocking(move || data::export_json(&db, &name))
         .await
         .map_err(internal)?
-        .map_err(internal)?;
-    Ok(Json(
-        json!({"format":"fluxdb-json-v1","database":name,"retention_seconds":retention,"points":points.into_iter().map(point_json).collect::<Vec<_>>()}),
-    ))
+        .map_err(from_data)?;
+    Ok(Json(snapshot))
 }
 
 #[cfg(test)]
@@ -618,6 +421,7 @@ mod integration_tests {
     };
     use fluxdb_core::storage::{StorageConfig, StorageEngine};
     use tower::ServiceExt;
+
     async fn call(
         app: &Router,
         method: &str,
@@ -646,6 +450,7 @@ mod integration_tests {
             serde_json::from_slice(&bytes).unwrap_or(Value::Null),
         )
     }
+
     #[tokio::test]
     async fn authenticated_crud_query_retention_export_and_telemetry() {
         let dir = tempfile::tempdir().unwrap();

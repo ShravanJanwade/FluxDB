@@ -273,9 +273,9 @@ fn validate_action(action: &Action, selected: &str) -> Result<(), String> {
             }
             for point in points {
                 allowed_keys(point, &["measurement", "tags", "timestamp", "fields"])?;
-                let input: super::console::PointInput =
+                let input: super::data::PointInput =
                     serde_json::from_value(point.clone()).map_err(|e| e.to_string())?;
-                input.convert().map_err(|(_, e)| e.0.error)?;
+                input.convert().map_err(|e| e.message().to_string())?;
             }
         }
         "delete_points" => {

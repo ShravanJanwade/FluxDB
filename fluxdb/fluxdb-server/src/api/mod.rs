@@ -1,7 +1,9 @@
 mod assistant;
-mod console;
+pub mod console;
+pub mod data;
 // HTTP API endpoints
 
+use axum::http::{header, HeaderName, Method};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -13,7 +15,7 @@ use fluxdb_core::storage::StorageEngine;
 use fluxdb_core::{DataPoint, FieldValue, Fields, Point, SeriesKey};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
 /// Application state
@@ -29,14 +31,52 @@ fn internal_error(error: impl ToString) -> ApiError {
     )
 }
 
-/// Create the API router
-pub fn create_router(engine: Arc<StorageEngine>) -> Router {
+/// Browser origins permitted to call this server. The development console is
+/// served by Vite on another port, so the defaults cover it; a hosted console
+/// on a separate domain must be listed explicitly.
+pub fn allowed_origins() -> Vec<String> {
+    std::env::var("FLUXDB_CORS_ORIGINS")
+        .unwrap_or_else(|_| {
+            "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173"
+                .into()
+        })
+        .split(',')
+        .map(|origin| origin.trim().to_string())
+        .filter(|origin| !origin.is_empty())
+        .collect()
+}
+
+/// Create the API router. `cloud` carries the multi-tenant control plane when
+/// it is enabled; without it the server is a plain single-tenant, token-
+/// authenticated FluxDB, which is what a self-hosted deployment usually wants.
+pub fn create_router(
+    engine: Arc<StorageEngine>,
+    cloud: Option<crate::cloud::CloudState>,
+) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(tower_http::cors::AllowOrigin::list(
-            std::env::var("FLUXDB_CORS_ORIGINS").unwrap_or_else(|_| "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173".into()).split(',').filter_map(|s| s.trim().parse().ok()).collect::<Vec<axum::http::HeaderValue>>()
+            allowed_origins()
+                .iter()
+                .filter_map(|origin| origin.parse().ok())
+                .collect::<Vec<axum::http::HeaderValue>>(),
         ))
-        .allow_methods(Any)
-        .allow_headers(Any);
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::DELETE,
+            Method::OPTIONS,
+            Method::HEAD,
+        ])
+        // Enumerated rather than `*`: a wildcard cannot be combined with
+        // credentialed requests, and sessions travel in a cookie.
+        .allow_headers([
+            header::CONTENT_TYPE,
+            header::AUTHORIZATION,
+            HeaderName::from_static("x-flux-target-url"),
+            HeaderName::from_static("x-flux-target-token"),
+        ])
+        .allow_credentials(true);
 
     let router = Router::new()
         .merge(assistant::routes())
@@ -62,7 +102,15 @@ pub fn create_router(engine: Arc<StorageEngine>) -> Router {
         .layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024))
         .layer(TraceLayer::new_for_http())
         .with_state(engine);
-    console::instrument(router, console::Monitor::new()).layer(cors)
+    let telemetry = cloud
+        .as_ref()
+        .map(|cloud| cloud.telemetry.clone())
+        .unwrap_or_default();
+    let router = match cloud {
+        Some(cloud) => router.merge(crate::cloud::routes(cloud)),
+        None => router,
+    };
+    console::instrument(router, telemetry).layer(cors)
 }
 
 // ============================================================================
@@ -420,7 +468,7 @@ async fn metrics(State(engine): State<AppState>) -> Result<String, ApiError> {
 // Line Protocol Parser
 // ============================================================================
 
-fn parse_line_protocol(data: &str, precision: &str) -> Result<Vec<Point>, String> {
+pub(crate) fn parse_line_protocol(data: &str, precision: &str) -> Result<Vec<Point>, String> {
     let mut points = Vec::new();
     let precision_multiplier = match precision {
         "ns" => 1,
