@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import * as echarts from "echarts/core";
 import { BarChart, LineChart } from "echarts/charts";
 import {
@@ -399,35 +400,68 @@ export function Menu({
   label: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [drop, setDrop] = useState<"down" | "up">("down");
+  const [box, setBox] = useState<{
+    top: number;
+    left: number;
+    drop: "down" | "up";
+  } | null>(null);
   const container = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const close = useCallback(() => setOpen(false), []);
 
-  // Decide the direction before paint, so a menu anchored low on the screen —
-  // the account menu sits at the foot of the sidebar — opens upward instead of
-  // running off the bottom of the viewport.
+  // The panel is rendered into document.body and positioned from the trigger's
+  // viewport rect, because an absolutely positioned panel is clipped by any
+  // ancestor that scrolls or hides overflow — and it had two: the sidebar,
+  // which clips its own foot so the nav can scroll, and the table wrapper,
+  // which scrolls horizontally. Escaping the flow is the only fix that covers
+  // both without either of them having to know a menu exists.
+  const place = useCallback(() => {
+    const anchor = container.current?.getBoundingClientRect();
+    if (!anchor) return;
+    const height = panel.current?.offsetHeight ?? 0;
+    const width = panel.current?.offsetWidth ?? 0;
+    const margin = 8;
+    const below = window.innerHeight - anchor.bottom;
+    // Flip up only when there is genuinely more usable room above, so ordinary
+    // menus keep opening downward as expected.
+    const drop: "down" | "up" =
+      below < height + margin && anchor.top > below ? "up" : "down";
+    const top =
+      drop === "down"
+        ? anchor.bottom + 6
+        : Math.max(margin, anchor.top - height - 6);
+    const raw = align === "end" ? anchor.right - width : anchor.left;
+    // Keep the panel on screen when the trigger sits near an edge.
+    const left = Math.min(
+      Math.max(margin, raw),
+      Math.max(margin, window.innerWidth - width - margin),
+    );
+    setBox({ top, left, drop });
+  }, [align]);
+
   useLayoutEffect(() => {
     if (!open) return;
-    const decide = () => {
-      const anchor = container.current?.getBoundingClientRect();
-      const height = panel.current?.scrollHeight ?? 0;
-      if (!anchor) return;
-      const below = window.innerHeight - anchor.bottom;
-      const above = anchor.top;
-      // Only flip when there is genuinely more usable space above, so ordinary
-      // menus keep opening downward as expected.
-      setDrop(below < height + 16 && above > below ? "up" : "down");
+    place();
+    // `true` captures scrolls in any ancestor, not just the window, so the
+    // panel tracks a trigger inside a scrolling table.
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
     };
-    decide();
-    window.addEventListener("resize", decide);
-    return () => window.removeEventListener("resize", decide);
-  }, [open]);
+  }, [open, place]);
 
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: MouseEvent) => {
-      if (!container.current?.contains(event.target as Node)) close();
+      const target = event.target as Node;
+      if (
+        !container.current?.contains(target) &&
+        !panel.current?.contains(target)
+      ) {
+        close();
+      }
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
@@ -439,6 +473,10 @@ export function Menu({
       document.removeEventListener("keydown", onKey);
     };
   }, [open, close]);
+
+  useEffect(() => {
+    if (!open) setBox(null);
+  }, [open]);
 
   return (
     <div className="menu" ref={container}>
@@ -453,15 +491,24 @@ export function Menu({
         {trigger}
         <ChevronDown size={14} aria-hidden className="menu-chevron" />
       </button>
-      {open && (
-        <div
-          ref={panel}
-          className={`menu-panel menu-${align} menu-${drop}`}
-          role="menu"
-        >
-          {children(close)}
-        </div>
-      )}
+      {open &&
+        createPortal(
+          <div
+            ref={panel}
+            className={`menu-panel menu-${box?.drop ?? "down"}`}
+            role="menu"
+            style={{
+              top: box?.top ?? 0,
+              left: box?.left ?? 0,
+              // Measured on the first paint, so it is hidden until placed
+              // rather than appearing in the corner for a frame.
+              visibility: box ? "visible" : "hidden",
+            }}
+          >
+            {children(close)}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

@@ -55,6 +55,30 @@ function Loading({ label }: { label: string }) {
   );
 }
 
+/**
+ * A fallback that stays invisible for a moment before appearing.
+ *
+ * Each screen is a separate chunk, so the first visit to one suspends while it
+ * downloads. On a fast connection that is a few dozen milliseconds — long
+ * enough for a spinner to appear and vanish, which reads as jank rather than as
+ * progress. Showing nothing until the wait is long enough to be worth reporting
+ * removes the flicker without hiding a genuinely slow load.
+ */
+function DeferredLoading({
+  label,
+  delay = 250,
+}: {
+  label: string;
+  delay?: number;
+}) {
+  const [visible, setVisible] = React.useState(false);
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => setVisible(true), delay);
+    return () => window.clearTimeout(timer);
+  }, [delay]);
+  return visible ? <Loading label={label} /> : null;
+}
+
 // Applied before the first paint so a dark-theme visitor never sees a white
 // flash on a cold load.
 applyStoredThemeEarly();
@@ -135,7 +159,7 @@ function App() {
         <ToastProvider>
           <SessionProvider>
             <DirectProvider>
-              <Suspense fallback={<Loading label="Loading…" />}>
+              <Suspense fallback={<DeferredLoading label="Loading…" />}>
                 <Routes>
                   <Route path="/" element={<Landing />} />
                   <Route path="/login" element={<AuthScreen mode="signin" />} />

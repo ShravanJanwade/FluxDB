@@ -855,6 +855,21 @@ function Scheduled({ projectId }: { projectId: string }) {
   );
 }
 
+/** Presets, so the common cases are one click and the floor is respected. */
+const INTERVALS: { minutes: number; label: string; hint: string }[] = [
+  { minutes: 0, label: "Manual", hint: "Runs only when you ask" },
+  { minutes: 60, label: "Hourly", hint: "24 runs a day" },
+  { minutes: 360, label: "6 hours", hint: "4 runs a day" },
+  { minutes: 1440, label: "Daily", hint: "1 run a day" },
+  { minutes: 10080, label: "Weekly", hint: "1 run a week" },
+];
+
+const IDEAS = [
+  "Check error rates and p99 latency across every bucket, and report anything unusual compared with the rest of the day.",
+  "Find measurements that have stopped receiving data in the last hour.",
+  "Look for buckets growing without a retention policy and estimate when they become a problem.",
+];
+
 function AgentForm({
   projectId,
   agent,
@@ -873,38 +888,74 @@ function AgentForm({
   const [error, setError] = useState<string | null>(null);
   const { run, isBusy } = useAction();
 
+  const save = () =>
+    void run("save", async () => {
+      setError(null);
+      const input = {
+        name: name.trim(),
+        instruction: instruction.trim(),
+        interval_minutes: interval,
+        enabled,
+      };
+      try {
+        if (agent) {
+          await api.updateSavedAgent(projectId, agent.id, input);
+        } else {
+          await api.createSavedAgent(projectId, input);
+        }
+        onSaved();
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : "Could not save.");
+      }
+    });
+
+  const ready = name.trim().length > 0 && instruction.trim().length >= 8;
+
   return (
     <Modal
-      title={agent ? `Edit ${agent.name}` : "New scheduled agent"}
+      title={agent ? "Edit agent" : "New scheduled agent"}
+      description="A standing question the agent investigates on its own, recording what it finds."
+      width={640}
       onClose={onClose}
+      footer={
+        <>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(event) => setEnabled(event.target.checked)}
+            />
+            <span aria-hidden />
+            <span>{enabled ? "Enabled" : "Paused"}</span>
+          </label>
+          <span className="spacer" />
+          <button type="button" className="btn btn-ghost" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={isBusy("save") || !ready}
+            onClick={save}
+          >
+            {isBusy("save")
+              ? "Saving…"
+              : agent
+                ? "Save changes"
+                : "Create agent"}
+          </button>
+        </>
+      }
     >
       <form
+        className="agent-form"
         onSubmit={(event) => {
           event.preventDefault();
-          void run("save", async () => {
-            setError(null);
-            const input = {
-              name,
-              instruction,
-              interval_minutes: interval,
-              enabled,
-            };
-            try {
-              if (agent) {
-                await api.updateSavedAgent(projectId, agent.id, input);
-              } else {
-                await api.createSavedAgent(projectId, input);
-              }
-              onSaved();
-            } catch (cause) {
-              setError(
-                cause instanceof Error ? cause.message : "Could not save.",
-              );
-            }
-          });
+          if (ready) save();
         }}
       >
         {error && <Notice tone="danger">{error}</Notice>}
+
         <label className="field">
           <span>Name</span>
           <input
@@ -912,10 +963,12 @@ function AgentForm({
             onChange={(event) => setName(event.target.value)}
             maxLength={80}
             required
+            autoFocus
             placeholder="Nightly error sweep"
           />
         </label>
-        <label className="field">
+
+        <div className="field">
           <span>What should it investigate?</span>
           <textarea
             value={instruction}
@@ -923,52 +976,61 @@ function AgentForm({
             rows={4}
             maxLength={2000}
             required
-            placeholder="Check error rates and p99 latency across every bucket, and report anything that looks unusual compared with the rest of the day."
+            placeholder="Describe it the way you would to a colleague on call."
           />
-        </label>
-        <label className="field">
-          <span>How often</span>
-          <select
-            value={interval}
-            onChange={(event) => setInterval(Number(event.target.value))}
-          >
-            <option value={0}>Only when I ask</option>
-            <option value={60}>Every hour</option>
-            <option value={360}>Every 6 hours</option>
-            <option value={1440}>Every day</option>
-            <option value={10080}>Every week</option>
-          </select>
-        </label>
-        <label className="field field-check">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(event) => setEnabled(event.target.checked)}
-          />
-          <span>Enabled</span>
-        </label>
-        <p className="muted">
-          Scheduled runs spend this workspace's AI allowance. The agent still
-          only proposes changes — a scheduled run never applies anything.
-        </p>
-        <div className="modal-actions">
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={isBusy("save")}
-          >
-            {agent ? "Save changes" : "Create agent"}
-          </button>
+          <div className="agent-form-meta">
+            <span className={instruction.trim().length < 8 ? "is-short" : ""}>
+              {instruction.length} / 2000
+            </span>
+            {instruction.trim().length < 8 && (
+              <span>At least 8 characters</span>
+            )}
+          </div>
+          {!instruction.trim() && (
+            <ul className="agent-form-ideas">
+              {IDEAS.map((idea) => (
+                <li key={idea}>
+                  <button type="button" onClick={() => setInstruction(idea)}>
+                    {idea}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
+
+        <fieldset className="agent-form-interval">
+          <legend>How often</legend>
+          <div className="segmented" role="radiogroup" aria-label="How often">
+            {INTERVALS.map((option) => (
+              <button
+                key={option.minutes}
+                type="button"
+                role="radio"
+                aria-checked={interval === option.minutes}
+                className={interval === option.minutes ? "is-selected" : ""}
+                onClick={() => setInterval(option.minutes)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <p className="agent-form-hint">
+            {INTERVALS.find((option) => option.minutes === interval)?.hint}
+            {interval > 0 && " · spends this workspace's AI allowance"}
+          </p>
+        </fieldset>
+
+        <Notice tone="info" title="It proposes, it does not apply">
+          A scheduled run can prepare changes, but nothing is applied without
+          someone approving it here. Findings appear under History.
+        </Notice>
       </form>
     </Modal>
   );
 }
 
-/** "Every hour", "Every 6 hours" — not "Every 1 hour(s)". */
+/** "Every hour", "Every 6 hours" - not "Every 1 hour(s)". */
 function humanInterval(minutes: number): string {
   const unit = (count: number, noun: string) =>
     count === 1 ? noun : `${count} ${noun}s`;

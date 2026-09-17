@@ -39,7 +39,7 @@
   /* Ink. */
   --text: #0f172a;
   --text-secondary: #46536b;
-  --text-muted: #6b7789;
+  --text-muted: #616c7d;
   --text-inverse: #ffffff;
 
   /* Lines. */
@@ -54,7 +54,7 @@
   --success-bg: #e7f7f0;
   --warning: #b45309;
   --warning-bg: #fdf3e3;
-  --danger: #dc2626;
+  --danger: #c81e1e;
   --danger-bg: #fdeceb;
   --info: #2563eb;
   --info-bg: #eaf0fe;
@@ -64,6 +64,10 @@
   --accent-hover: var(--brand-700);
   --accent-soft: var(--brand-50);
   --accent-text: var(--brand-700);
+  /* Foreground for anything filled with `--accent`. White clears AA on both
+     themes' accent (6.87:1 on brand-600, 5.00:1 on brand-500); the tokens that
+     sound similar do not — see the pairing test. */
+  --on-accent: #ffffff;
   --ring: rgba(91, 91, 240, 0.34);
 
   /* Chart series: a fixed categorical order, never cycled.
@@ -153,7 +157,7 @@
 
   --text: #e9edf6;
   --text-secondary: #a9b4c8;
-  --text-muted: #77839a;
+  --text-muted: #8b96ad;
   --text-inverse: #0a0c12;
 
   --border: #222838;
@@ -175,6 +179,7 @@
   --accent-hover: var(--brand-400);
   --accent-soft: rgba(91, 91, 240, 0.16);
   --accent-text: var(--brand-300);
+  --on-accent: #ffffff;
   --ring: rgba(122, 131, 251, 0.4);
 
   /* The same eight hues re-stepped for the dark surface, chosen for that band
@@ -378,7 +383,7 @@ textarea {
 .btn-primary {
   background: var(--accent);
   border-color: transparent;
-  color: #fff;
+  color: var(--on-accent);
   box-shadow: var(--shadow-sm);
 }
 

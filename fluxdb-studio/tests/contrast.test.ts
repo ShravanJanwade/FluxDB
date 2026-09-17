@@ -57,6 +57,12 @@ function resolve(
 }
 
 function channels(colour: string): [number, number, number] {
+  const [r, g, b] = rgba(colour);
+  return [r, g, b];
+}
+
+/** Red, green, blue, alpha. Alpha defaults to 1 for an opaque colour. */
+function rgba(colour: string): [number, number, number, number] {
   const hex = colour.trim();
   if (hex.startsWith("#")) {
     const digits =
@@ -67,12 +73,34 @@ function channels(colour: string): [number, number, number] {
       Number.parseInt(digits.slice(0, 2), 16),
       Number.parseInt(digits.slice(2, 4), 16),
       Number.parseInt(digits.slice(4, 6), 16),
+      hex.length === 9 ? Number.parseInt(hex.slice(7, 9), 16) / 255 : 1,
     ];
   }
   const numbers = hex.match(/[\d.]+/g);
   if (!numbers || numbers.length < 3)
     throw new Error(`unreadable colour ${colour}`);
-  return [Number(numbers[0]), Number(numbers[1]), Number(numbers[2])];
+  return [
+    Number(numbers[0]),
+    Number(numbers[1]),
+    Number(numbers[2]),
+    numbers.length > 3 ? Number(numbers[3]) : 1,
+  ];
+}
+
+/**
+ * Composite a possibly translucent colour over what sits behind it.
+ *
+ * Several surface and status tokens in the dark theme are `rgba(...)` tints.
+ * Measuring their raw channels as if opaque reports a contrast that no reader
+ * ever sees — the tint is 16% over a dark page, not the full-strength colour.
+ */
+function over(colour: string, backdrop: string): string {
+  const [r, g, b, alpha] = rgba(colour);
+  if (alpha >= 1) return colour;
+  const [br, bg, bb] = channels(backdrop);
+  const blend = (top: number, bottom: number) =>
+    Math.round(top * alpha + bottom * (1 - alpha));
+  return `rgb(${blend(r, br)}, ${blend(g, bg)}, ${blend(b, bb)})`;
 }
 
 function luminance(colour: string): number {
@@ -196,4 +224,115 @@ describe("token hygiene", () => {
       }
     }
   });
+});
+
+// ---------------------------------------------------------------------------
+// Pairings declared in the component stylesheets
+// ---------------------------------------------------------------------------
+
+/**
+ * The token-level checks above cannot catch a bad *pairing*: the tokens are
+ * each fine, and the mistake is putting two of them together. That is exactly
+ * how the agent's question bubble shipped unreadable — `--accent-text` is
+ * accent-COLOURED text meant for a neutral background, and pairing it with the
+ * `--accent` fill put brand-700 on brand-600.
+ *
+ * So this walks every rule in the component stylesheets that sets both a
+ * background and a colour from tokens, resolves them, and measures.
+ */
+const COMPONENT_SHEETS = [
+  "console.css",
+  "marketing.css",
+  "auth.css",
+  "docs.css",
+] as const;
+
+type Pairing = {
+  sheet: string;
+  selector: string;
+  background: string;
+  color: string;
+};
+
+function pairings(): Pairing[] {
+  const found: Pairing[] = [];
+  for (const sheet of COMPONENT_SHEETS) {
+    const text = readFileSync(
+      join(__dirname, "..", "src", "styles", sheet),
+      "utf8",
+    );
+    // Rule blocks: a selector, then declarations up to the closing brace.
+    for (const [, selector, body] of text.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const background = body.match(
+        /(?:^|[\s;])background(?:-color)?\s*:\s*var\((--[\w-]+)\)/,
+      );
+      const color = body.match(/(?:^|[\s;])color\s*:\s*var\((--[\w-]+)\)/);
+      if (!background || !color) continue;
+      found.push({
+        sheet,
+        selector: selector.trim().replace(/\s+/g, " "),
+        background: background[1],
+        color: color[1],
+      });
+    }
+  }
+  return found;
+}
+
+/**
+ * Pairings whose contrast is deliberately below the text threshold, with the
+ * reason. Each is decoration rather than prose a reader has to follow.
+ */
+const ACCEPTED_BELOW_AA = new Set<string>([
+  // The agent's avatar is a bot glyph in a soft disc. WCAG asks 3:1 of a
+  // graphical object rather than 4.5:1, and this measures 3.42:1 in the dark
+  // theme. Raising it would mean a harder accent on the one element that should
+  // recede behind the answer next to it.
+  "console.css .agent-avatar {--accent on --accent-soft}",
+]);
+
+describe("foreground and background pairings", () => {
+  const all = pairings();
+
+  it("finds pairings to check in the first place", () => {
+    // A regex that silently matches nothing would make this suite vacuous.
+    expect(all.length).toBeGreaterThan(10);
+  });
+
+  for (const theme of ["light", "dark"] as const) {
+    const scope = theme === "light" ? light : dark;
+
+    it(`meet AA for text in the ${theme} theme`, () => {
+      const failures: string[] = [];
+      for (const pairing of all) {
+        // A token that only exists in one theme's block is not a pairing bug.
+        if (!scope[pairing.background] || !scope[pairing.color]) continue;
+        let ratio: number;
+        try {
+          // A translucent fill shows the page through it, so both colours are
+          // composited before measuring.
+          const page = resolve(scope["--bg"], scope);
+          const background = over(
+            resolve(scope[pairing.background], scope),
+            page,
+          );
+          const foreground = over(
+            resolve(scope[pairing.color], scope),
+            background,
+          );
+          ratio = contrast(background, foreground);
+        } catch {
+          // Gradients and non-colour values are out of scope here.
+          continue;
+        }
+        // Keyed by sheet too, so an exception cannot silently cover a
+        // same-named selector in another stylesheet.
+        const key = `${pairing.sheet} ${pairing.selector} {${pairing.color} on ${pairing.background}}`;
+        if (ratio < WCAG_AA_TEXT && !ACCEPTED_BELOW_AA.has(key)) {
+          failures.push(`${key} = ${ratio.toFixed(2)}:1`);
+        }
+      }
+      expect(failures, failures.join("\n")).toEqual([]);
+    });
+  }
 });

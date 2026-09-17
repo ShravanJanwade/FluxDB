@@ -17,7 +17,7 @@ Python 3.14.7.
 | `cargo build --release --workspace --locked` | Server and offline CLI built |
 | `python scripts/smoke.py` | Passed: authentication, CORS, CRUD, exact integer round trips, atomic batch validation, SQL, checkpoint, process restart, snapshot restore, durable deletion, OpenAPI, and both SDKs |
 | `npm run typecheck` | Passed |
-| `npm test` (vitest) | **80 passed**: result-shape classification, categorical slot stability and truncation, nanosecond precision, query macros, every field-value shape, formatting, colour contrast in both themes, the sign-in flows, the console tour checklist's grid structure, and the agent screen's proposal review |
+| `npm test` (vitest) | **83 passed**: result-shape classification, categorical slot stability and truncation, nanosecond precision, query macros, every field-value shape, formatting, colour contrast in both themes including every foreground/background pairing declared in the component stylesheets, the sign-in flows, the console tour checklist's grid structure, and the agent screen's proposal review |
 | `npm run build` | Passed. Landing page payload ≈ 255 kB raw / 85 kB gzipped; the 536 kB charting chunk loads only when a console screen mounts |
 | `npm audit` | No known vulnerabilities in the installed graph |
 | Categorical palette validator | Passed in both modes against the real surfaces (`#ffffff` and `#11141d`): lightness band, chroma floor, adjacent colour-vision separation (worst dE 9.1 light / 8.4 dark, target >= 8) and the normal-vision floor (worst 19.6 / 19.3, floor 15). Contrast is a documented relief case on three light slots, met by the legend and the table view. |

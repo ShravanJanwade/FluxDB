@@ -151,7 +151,10 @@
 }
 
 .menu-panel {
-  position: absolute;
+  /* Fixed, and rendered into document.body: an absolutely positioned panel was
+     clipped by the sidebar's `overflow: hidden` and by the table wrapper's
+     horizontal scroll. Coordinates come from the trigger's viewport rect. */
+  position: fixed;
   min-width: 250px;
   max-width: 330px;
   max-height: 60vh;
@@ -161,28 +164,21 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
-  z-index: 60;
-}
-
-.menu-start {
-  left: 0;
-}
-
-.menu-end {
-  right: 0;
+  z-index: 120;
 }
 
 /* Direction is chosen at open time by the Menu component: a trigger low on the
    screen, such as the account menu at the foot of the sidebar, opens upward
    rather than running off the viewport. */
+/* Only the entrance direction. The coordinates are set inline from the
+   trigger's rect — declaring `top` or `bottom` here as well would constrain
+   both edges of a fixed element and collapse its height to the padding. */
 .menu-down {
-  top: calc(100% + 6px);
   transform-origin: top center;
   animation: menu-in 120ms ease-out;
 }
 
 .menu-up {
-  bottom: calc(100% + 6px);
   transform-origin: bottom center;
   animation: menu-in 120ms ease-out;
 }
@@ -1595,7 +1591,11 @@
   border-radius: var(--radius-lg);
   border-bottom-right-radius: var(--radius-sm);
   background: var(--accent);
-  color: var(--accent-text);
+  /* Two wrong tokens preceded this one. `--accent-text` is accent-COLOURED
+     text for neutral backgrounds, which put brand-700 on brand-600 and made
+     the question unreadable; `--text-inverse` is near-black in the dark theme,
+     which measured 3.91:1. `--on-accent` exists to name this pairing. */
+  color: var(--on-accent);
   overflow-wrap: anywhere;
 }
 
@@ -1978,5 +1978,208 @@
 
   .agent-run-kind {
     display: none;
+  }
+}
+
+/* ---------- scheduled agent form ---------- */
+
+.agent-form {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.agent-form .field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.agent-form .field > span,
+.agent-form legend {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.agent-form textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.agent-form-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-form-meta .is-short {
+  color: var(--warning);
+}
+
+.agent-form-ideas {
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+}
+
+.agent-form-ideas button {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+}
+
+.agent-form-ideas button:hover {
+  border-style: solid;
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.agent-form-interval {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.agent-form-hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* A row of mutually exclusive choices. Cheaper to scan than a select, and it
+   only offers intervals the server accepts. */
+.segmented {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+}
+
+.segmented button {
+  flex: 1;
+  padding: var(--space-2) var(--space-1);
+  border: 0;
+  border-radius: calc(var(--radius-md) - 4px);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.segmented button:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.segmented button.is-selected {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.segmented button:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segmented button {
+    transition: none;
+  }
+}
+
+/* A checkbox that reads as a state rather than as a question. */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch > span[aria-hidden] {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--surface-active);
+  transition: background 140ms ease;
+}
+
+.switch > span[aria-hidden]::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: transform 140ms ease;
+}
+
+.switch input:checked + span[aria-hidden] {
+  background: var(--accent);
+}
+
+.switch input:checked + span[aria-hidden]::after {
+  transform: translateX(14px);
+}
+
+.switch input:focus-visible + span[aria-hidden] {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch > span[aria-hidden],
+  .switch > span[aria-hidden]::after {
+    transition: none;
+  }
+}
+
+/* Pushes the confirm buttons to the right of a footer that also holds state. */
+.spacer {
+  flex: 1;
+}
+
+@media (max-width: 560px) {
+  .segmented {
+    flex-wrap: wrap;
+  }
+
+  .segmented button {
+    flex: 1 1 30%;
   }
 }

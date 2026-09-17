@@ -133,34 +133,102 @@ export default function Shell() {
       label: string;
       Icon: typeof Database;
       end?: boolean;
+      /** Warms this screen's chunk on hover, so the click does not wait. */
+      load?: () => Promise<unknown>;
     }[];
   }[] = [
     {
       label: "Project",
       items: [
-        { to: root, label: "Overview", Icon: LayoutDashboard, end: true },
-        { to: `${root}/buckets`, label: "Buckets", Icon: Database },
-        { to: `${root}/explorer`, label: "Data explorer", Icon: Table2 },
-        { to: `${root}/query`, label: "Query workspace", Icon: Terminal },
-        { to: `${root}/dashboards`, label: "Dashboards", Icon: BarChart3 },
-        { to: `${root}/monitors`, label: "Monitors & alerts", Icon: Bell },
-        { to: `${root}/agent`, label: "AI agent", Icon: Bot },
+        {
+          to: root,
+          label: "Overview",
+          Icon: LayoutDashboard,
+          end: true,
+          load: () => import("./Overview"),
+        },
+        {
+          to: `${root}/buckets`,
+          label: "Buckets",
+          Icon: Database,
+          load: () => import("./Buckets"),
+        },
+        {
+          to: `${root}/explorer`,
+          label: "Data explorer",
+          Icon: Table2,
+          load: () => import("./Explorer"),
+        },
+        {
+          to: `${root}/query`,
+          label: "Query workspace",
+          Icon: Terminal,
+          load: () => import("./QueryWorkspace"),
+        },
+        {
+          to: `${root}/dashboards`,
+          label: "Dashboards",
+          Icon: BarChart3,
+          load: () => import("./Dashboards"),
+        },
+        {
+          to: `${root}/monitors`,
+          label: "Monitors & alerts",
+          Icon: Bell,
+          load: () => import("./Monitors"),
+        },
+        {
+          to: `${root}/agent`,
+          label: "AI agent",
+          Icon: Bot,
+          load: () => import("./Agent"),
+        },
       ],
     },
     {
       label: "Connect",
       items: [
-        { to: `${root}/keys`, label: "API keys", Icon: KeyRound },
-        { to: `${root}/connections`, label: "Your own servers", Icon: Server },
-        { to: `${root}/health`, label: "Instance health", Icon: Gauge },
+        {
+          to: `${root}/keys`,
+          label: "API keys",
+          Icon: KeyRound,
+          load: () => import("./ApiKeys"),
+        },
+        {
+          to: `${root}/connections`,
+          label: "Your own servers",
+          Icon: Server,
+          load: () => import("./Connections"),
+        },
+        {
+          to: `${root}/health`,
+          label: "Instance health",
+          Icon: Gauge,
+          load: () => import("./Health"),
+        },
       ],
     },
     {
       label: "Workspace",
       items: [
-        { to: `${root}/members`, label: "Members", Icon: Users },
-        { to: `${root}/activity`, label: "Activity", Icon: Activity },
-        { to: `${root}/settings`, label: "Settings", Icon: Settings },
+        {
+          to: `${root}/members`,
+          label: "Members",
+          Icon: Users,
+          load: () => import("./Members"),
+        },
+        {
+          to: `${root}/activity`,
+          label: "Activity",
+          Icon: Activity,
+          load: () => import("./Activity"),
+        },
+        {
+          to: `${root}/settings`,
+          label: "Settings",
+          Icon: Settings,
+          load: () => import("./Settings"),
+        },
       ],
     },
   ];
@@ -208,6 +276,9 @@ export default function Shell() {
                     className={({ isActive }) =>
                       `nav-item${isActive ? " is-active" : ""}`
                     }
+                    onMouseEnter={item.load}
+                    onFocus={item.load}
+                    onPointerDown={item.load}
                   >
                     <item.Icon size={16} aria-hidden />
                     {item.label}
@@ -222,6 +293,8 @@ export default function Shell() {
                 className={({ isActive }) =>
                   `nav-item${isActive ? " is-active" : ""}`
                 }
+                onMouseEnter={() => void import("./Docs")}
+                onFocus={() => void import("./Docs")}
               >
                 <BookOpen size={16} aria-hidden />
                 Developer resources
