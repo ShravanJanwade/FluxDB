@@ -37,6 +37,7 @@ import { cellText, count, milliseconds } from "../lib/format";
 import { DEFAULT_RANGE, resolveRange, type RangeKey } from "../lib/time";
 import { useToast } from "../lib/toast";
 import type { PanelKind, QueryResult } from "../lib/types";
+import { PENDING_QUERY_KEY, takePending } from "./AssistantPanel";
 import { useProject } from "./ProjectContext";
 import { SourcePicker } from "./SourcePicker";
 
@@ -65,7 +66,10 @@ function loadHistory(projectId: string): string[] {
 export default function QueryWorkspace() {
   const { detail, client, target } = useProject();
   const toast = useToast();
-  const [sql, setSql] = useState(STARTER);
+  // The assistant can hand a query over on its way to this screen.
+  const [sql, setSql] = useState(
+    () => takePending(PENDING_QUERY_KEY) ?? STARTER,
+  );
   const [range, setRange] = useState<RangeKey>(DEFAULT_RANGE);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -337,15 +341,30 @@ export default function QueryWorkspace() {
                 description="A chart needs at least one numeric column. Add an aggregate, or read it as a table."
               />
             ) : (
-              <Chart
-                option={chartOption(
-                  shaped,
-                  shaped.hasTime ? "line" : "bar",
-                  "",
-                  { window: windowOf(result) },
+              <>
+                {shaped.hidden > 0 && (
+                  <div style={{ marginBottom: "var(--space-4)" }}>
+                    <Notice tone="info">
+                      Showing the {shaped.series.length > 0 ? "busiest " : ""}
+                      {shaped.series.length || shaped.categories.length} of{" "}
+                      {(shaped.series.length || shaped.categories.length) +
+                        shaped.hidden}
+                      . A ninth colour would be indistinguishable from one
+                      already in use, so the rest are left out — narrow the
+                      query, or read the result as a table.
+                    </Notice>
+                  </div>
                 )}
-                height={330}
-              />
+                <Chart
+                  option={chartOption(
+                    shaped,
+                    shaped.hasTime ? "line" : "bar",
+                    "",
+                    { window: windowOf(result) },
+                  )}
+                  height={330}
+                />
+              </>
             )}
           </div>
         ) : (

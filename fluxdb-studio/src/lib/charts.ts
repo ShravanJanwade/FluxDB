@@ -17,7 +17,17 @@ import { axisLabel, cellNumber, decimal } from "./format";
 import { nanosToMs } from "./time";
 import type { PanelKind, QueryResult } from "./types";
 
-export type Series = { name: string; points: [number, number][] };
+export type Series = {
+  name: string;
+  points: [number, number][];
+  /**
+   * Palette slot, derived from the series name rather than its position. A
+   * chart that assigned colour by rank would repaint every surviving series
+   * whenever the range changed and the ordering shifted, so a reader who
+   * learned "payments is pink" would be misled by their own filter.
+   */
+  slot: number;
+};
 
 export type Shaped = {
   /** Series over time. Empty when the result is categorical. */
@@ -32,6 +42,13 @@ export type Shaped = {
   measures: string[];
   /** Columns that held labels (tags). */
   labels: string[];
+  /**
+   * Series or categories beyond the palette's eight slots, which are dropped
+   * rather than given a recycled colour. A ninth hue is indistinguishable from
+   * an existing one under colour-vision deficiency, so the honest move is to
+   * say how many are missing and let the reader narrow the query.
+   */
+  hidden: number;
 };
 
 const EMPTY: Shaped = {
@@ -42,7 +59,11 @@ const EMPTY: Shaped = {
   spanMs: 0,
   measures: [],
   labels: [],
+  hidden: 0,
 };
+
+/** Categorical slots available. Never cycled: see `Shaped.hidden`. */
+export const MAX_SERIES = 8;
 
 /** Reads the theme's series colours so charts restyle with the rest of the UI. */
 export function palette(): string[] {
@@ -144,21 +165,39 @@ export function toSeries(result: QueryResult | null): Shaped {
         grouped.set(name, points);
       }
     }
-    const series = [...grouped.entries()]
+    // Colour is assigned from the name-sorted position, so a series keeps its
+    // hue as the range changes. Ordering is by peak value, so the legend reads
+    // in the order the eye picks lines out of the chart. The two are deliberately
+    // different: one is identity, the other is emphasis.
+    const slots = new Map(
+      [...grouped.keys()]
+        .sort((a, b) => a.localeCompare(b))
+        .map((name, index) => [name, index % MAX_SERIES]),
+    );
+    const ranked = [...grouped.entries()]
       .map(([name, points]) => ({
         name,
+        slot: slots.get(name) ?? 0,
         points: points.sort((a, b) => a[0] - b[0]),
       }))
-      // Busiest series first, so the legend's order matches what the eye picks
-      // out of the chart.
       .sort(
         (a, b) =>
           Math.max(...b.points.map((point) => point[1])) -
           Math.max(...a.points.map((point) => point[1])),
       );
+    // Keep the busiest eight and re-slot them so no two share a colour.
+    const series = ranked.slice(0, MAX_SERIES).map((entry, index) => ({
+      ...entry,
+      slot:
+        new Set(ranked.slice(0, MAX_SERIES).map((s) => s.slot)).size ===
+        Math.min(ranked.length, MAX_SERIES)
+          ? entry.slot
+          : index,
+    }));
     return {
       ...EMPTY,
       series,
+      hidden: Math.max(0, ranked.length - MAX_SERIES),
       hasTime: true,
       spanMs: Number.isFinite(max - min) ? max - min : 0,
       measures: measureIndexes.map((index) => result.columns[index]),
@@ -166,17 +205,22 @@ export function toSeries(result: QueryResult | null): Shaped {
     };
   }
 
-  const categories = result.rows.map(
+  // Past roughly seven colour classes adjacent categories blur, so a long
+  // categorical result is truncated and the remainder reported.
+  const CATEGORY_LIMIT = 24;
+  const rows = result.rows.slice(0, CATEGORY_LIMIT);
+  const categories = rows.map(
     (row, position) => labelOf(row) || `Row ${position + 1}`,
   );
   const bars = measureIndexes.map((index) => ({
     name: result.columns[index],
-    values: result.rows.map((row) => cellNumber(row[index])),
+    values: rows.map((row) => cellNumber(row[index])),
   }));
   return {
     ...EMPTY,
     categories,
     bars,
+    hidden: Math.max(0, result.rows.length - rows.length),
     measures: measureIndexes.map((index) => result.columns[index]),
     labels: labelIndexes.map((index) => result.columns[index]),
   };
@@ -222,7 +266,9 @@ export function windowOf(
   if (!result?.window) return undefined;
   const from = nanosToMs(result.window.from);
   const to = nanosToMs(result.window.to);
-  return Number.isFinite(from) && Number.isFinite(to) ? { from, to } : undefined;
+  return Number.isFinite(from) && Number.isFinite(to)
+    ? { from, to }
+    : undefined;
 }
 
 /** Chart option for a shaped result. `kind` picks between lines, filled areas
@@ -306,22 +352,24 @@ export function chartOption(
       },
       yAxis: valueAxis,
       animationDuration: 260,
-      series: shaped.series.map((series, index) => ({
-        name: series.name,
-        type: kind === "bar" ? "bar" : "line",
-        data: series.points,
-        showSymbol: false,
-        smooth: kind !== "bar" ? 0.18 : undefined,
-        lineStyle: { width: 1.9 },
-        emphasis: { focus: "series" as const },
-        areaStyle:
-          kind === "area"
-            ? {
-                opacity: 0.16,
-                color: colours[index % colours.length],
-              }
-            : undefined,
-      })),
+      series: shaped.series.map((series) => {
+        const colour = colours[series.slot % colours.length];
+        return {
+          name: series.name,
+          type: kind === "bar" ? "bar" : "line",
+          data: series.points,
+          showSymbol: false,
+          smooth: kind !== "bar" ? 0.18 : undefined,
+          // Set explicitly rather than left to the palette's cycle, so the
+          // colour follows the entity.
+          color: colour,
+          itemStyle: { color: colour },
+          lineStyle: { width: 2, color: colour },
+          emphasis: { focus: "series" as const },
+          areaStyle:
+            kind === "area" ? { opacity: 0.16, color: colour } : undefined,
+        };
+      }),
     };
   }
 
@@ -350,12 +398,19 @@ export function chartOption(
     },
     yAxis: valueAxis,
     animationDuration: 260,
-    series: shaped.bars.map((bar) => ({
+    series: shaped.bars.map((bar, index) => ({
       name: bar.name,
       type: "bar",
       data: bar.values,
       barMaxWidth: 34,
-      itemStyle: { borderRadius: [4, 4, 0, 0] },
+      itemStyle: {
+        // Rounded data-ends anchored to the baseline, and a surface-coloured
+        // gap so adjacent bars read as separate marks.
+        borderRadius: [4, 4, 0, 0],
+        color: colours[index % colours.length],
+        borderColor: theme.surface,
+        borderWidth: 1,
+      },
       emphasis: { focus: "series" as const },
     })),
   };

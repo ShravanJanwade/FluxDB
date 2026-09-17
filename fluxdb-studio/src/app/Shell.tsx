@@ -50,6 +50,7 @@ import { useSession } from "../lib/session";
 import { useToast } from "../lib/toast";
 import type { OrgSummary } from "../lib/types";
 import { ProjectProvider } from "./ProjectContext";
+import { AssistantLauncher } from "./AssistantPanel";
 import { CommandPalette } from "./CommandPalette";
 import "../styles/console.css";
 
@@ -325,6 +326,9 @@ export default function Shell() {
                 <span>Search or jump to…</span>
                 <kbd>{navigator.platform.includes("Mac") ? "⌘" : "Ctrl"} K</kbd>
               </button>
+              <AssistantLauncher
+                page={location.pathname.split("/").pop() ?? "overview"}
+              />
               <Link className="btn btn-sm" to={`${root}/query`}>
                 <Sparkles size={15} aria-hidden /> Run a query
               </Link>

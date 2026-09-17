@@ -399,17 +399,25 @@ function PanelCard({
         ) : panel.kind === "table" ? (
           <TablePanel result={query.data} />
         ) : (
-          <Chart
-            option={
-              shaped.series.length > 0 || shaped.bars.length > 0
-                ? chartOption(shaped, panel.kind, panel.unit, {
-                    compact: true,
-                    window: windowOf(query.data),
-                  })
-                : null
-            }
-            height={panel.span <= 4 ? 190 : 240}
-          />
+          <>
+            <Chart
+              option={
+                shaped.series.length > 0 || shaped.bars.length > 0
+                  ? chartOption(shaped, panel.kind, panel.unit, {
+                      compact: true,
+                      window: windowOf(query.data),
+                    })
+                  : null
+              }
+              height={panel.span <= 4 ? 190 : 240}
+            />
+            {shaped.hidden > 0 && (
+              <p className="hint" style={{ marginTop: "var(--space-2)" }}>
+                {shaped.hidden} more not shown — the palette has eight slots and
+                a recycled colour would be ambiguous.
+              </p>
+            )}
+          </>
         )}
       </div>
     </article>

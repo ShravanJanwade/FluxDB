@@ -17,9 +17,11 @@ Python 3.14.7.
 | `cargo build --release --workspace --locked` | Server and offline CLI built |
 | `python scripts/smoke.py` | Passed: authentication, CORS, CRUD, exact integer round trips, atomic batch validation, SQL, checkpoint, process restart, snapshot restore, durable deletion, OpenAPI, and both SDKs |
 | `npm run typecheck` | Passed |
-| `npm test` (vitest) | **41 passed**: result-shape classification, nanosecond precision, query macros, every field-value shape, formatting, and the sign-in flows |
+| `npm test` (vitest) | **72 passed**: result-shape classification, categorical slot stability and truncation, nanosecond precision, query macros, every field-value shape, formatting, colour contrast in both themes, and the sign-in flows |
 | `npm run build` | Passed. Landing page payload ≈ 255 kB raw / 85 kB gzipped; the 536 kB charting chunk loads only when a console screen mounts |
 | `npm audit` | No known vulnerabilities in the installed graph |
+| Categorical palette validator | Passed in both modes against the real surfaces (`#ffffff` and `#11141d`): lightness band, chroma floor, adjacent colour-vision separation (worst dE 9.1 light / 8.4 dark, target >= 8) and the normal-vision floor (worst 19.6 / 19.3, floor 15). Contrast is a documented relief case on three light slots, met by the legend and the table view. |
+| Colour contrast | Every text token measures >= 4.5:1 on its surface in both themes, asserted by parsing the token file |
 | `node start-all.js --verify` | Passed: server, browser proxy, and control plane (sqlite) readiness; both services exited |
 | Container image build and boot | **Not executed here** — Docker is not installed on this machine. CI builds the image, boots it, and asserts it serves `/health`, the control plane, the console and a deep link while refusing anonymous `/api/v1`. |
 
@@ -80,11 +82,26 @@ session throughout.
 | Instance health | 124 requests recorded, p50 10.4 ms, p95 460.6 ms, 0 % failed, with the latency and request charts populated |
 | Route sweep | All 13 console routes rendered their expected heading with no error state |
 
-Two defects were found this way and fixed: charts were drawing into a stale
-canvas width because the React ECharts binding resizes through echarts
-internals that moved in echarts 6, and the hosted deployment's reverse proxy was
-injecting the administration token into every request, which made the
-single-tenant `/api/v1` surface public.
+Defects found this way and fixed:
+
+- Charts drew into a stale canvas width, because the React ECharts binding
+  resizes through echarts internals that moved in echarts 6. Panels measured
+  134 px while their boxes were 589.
+- The hosted deployment's reverse proxy injected the administration token into
+  every request, which made the single-tenant `/api/v1` surface public.
+- White button labels on the dark theme's accent fill measured 3.3:1, and the
+  light theme's success green 3.8:1 on white. Both are below AA and neither
+  looks obviously wrong.
+- Chart colour was assigned by rank, so changing the time range repainted every
+  surviving series — a reader who had learned "payments is pink" was misled by
+  their own filter. Colour now follows the series name; ordering still follows
+  the peak.
+- Series past the palette's eight slots were drawn in recycled colours. They are
+  now dropped with a count, because a ninth hue is indistinguishable from one
+  already in use.
+- The original indigo-to-cyan chart palette failed the dark lightness band, at
+  OKLCH L 0.69-0.84 against a 0.48-0.67 target — bright saturated lines on a
+  near-black surface that are harder to separate, not easier.
 
 ## Small local HTTP workload
 

@@ -39,6 +39,7 @@ import { count, fieldText, nanosToLocal } from "../lib/format";
 import { nowNanos, resolveRange, type RangeKey } from "../lib/time";
 import { useToast } from "../lib/toast";
 import type { Point, Schema } from "../lib/types";
+import { PENDING_WRITE_KEY, takePending } from "./AssistantPanel";
 import { useProject } from "./ProjectContext";
 import { SourcePicker, useCanWrite } from "./SourcePicker";
 
@@ -56,7 +57,9 @@ export default function Explorer() {
   const [search, setSearch] = useState("");
   const [field, setField] = useState("");
   const [editing, setEditing] = useState<Point | null>(null);
-  const [creating, setCreating] = useState(false);
+  // A write the assistant prepared, if it sent us here to review it.
+  const [proposed] = useState(() => takePending(PENDING_WRITE_KEY));
+  const [creating, setCreating] = useState(proposed !== null);
   const [deleting, setDeleting] = useState<Point | null>(null);
   const [revision, setRevision] = useState(0);
   const debouncedSearch = useDebounced(search);
@@ -512,6 +515,7 @@ export default function Explorer() {
         <PointDialog
           point={editing}
           measurement={measurement}
+          initial={editing ? null : proposed}
           onClose={() => {
             setCreating(false);
             setEditing(null);
@@ -593,30 +597,35 @@ export default function Explorer() {
 function PointDialog({
   point,
   measurement,
+  initial,
   onClose,
   onSaved,
 }: {
   point: Point | null;
   measurement: string;
+  /** A payload prepared elsewhere, shown as-is for review. */
+  initial?: string | null;
   onClose: () => void;
   onSaved: (written: number) => void;
 }) {
   const { client } = useProject();
-  const [text, setText] = useState(() =>
-    JSON.stringify(
-      {
-        points: [
-          point ?? {
-            measurement: measurement || "cpu",
-            tags: { host: "api-01" },
-            timestamp: nowNanos(),
-            fields: { usage: 42.8, cores: { integer: "8" } },
-          },
-        ],
-      },
-      null,
-      2,
-    ),
+  const [text, setText] = useState(
+    () =>
+      initial ??
+      JSON.stringify(
+        {
+          points: [
+            point ?? {
+              measurement: measurement || "cpu",
+              tags: { host: "api-01" },
+              timestamp: nowNanos(),
+              fields: { usage: 42.8, cores: { integer: "8" } },
+            },
+          ],
+        },
+        null,
+        2,
+      ),
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

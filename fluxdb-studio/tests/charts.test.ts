@@ -6,7 +6,12 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { bucketTelemetry, statValue, toSeries } from "../src/lib/charts";
+import {
+  bucketTelemetry,
+  MAX_SERIES,
+  statValue,
+  toSeries,
+} from "../src/lib/charts";
 import type { QueryResult } from "../src/lib/types";
 
 /** Nanosecond string for a whole-minute offset from a fixed epoch. */
@@ -186,5 +191,92 @@ describe("bucketTelemetry", () => {
     expect(
       buckets.every((bucket) => bucket.count === 0 && bucket.p95 === 0),
     ).toBe(true);
+  });
+});
+
+describe("categorical slots", () => {
+  /** A result with `count` hosts, each holding one point at `minute`. */
+  function fleet(hosts: string[], minute = 0): QueryResult {
+    return {
+      columns: ["time", "host", "cpu"],
+      rows: hosts.map((host, index) => [at(minute), host, 10 + index]),
+      execution_time_ms: 1,
+    };
+  }
+
+  it("keeps a series on the same colour when the ordering changes", () => {
+    // Colour assigned by rank would repaint every survivor as soon as the
+    // range changed and the busiest series changed with it.
+    const quiet = toSeries({
+      columns: ["time", "host", "cpu"],
+      rows: [
+        [at(0), "api-01", 10],
+        [at(0), "api-02", 90],
+      ],
+      execution_time_ms: 1,
+    });
+    const busy = toSeries({
+      columns: ["time", "host", "cpu"],
+      rows: [
+        [at(0), "api-01", 90],
+        [at(0), "api-02", 10],
+      ],
+      execution_time_ms: 1,
+    });
+    const slotOf = (shaped: ReturnType<typeof toSeries>, name: string) =>
+      shaped.series.find((series) => series.name === name)?.slot;
+
+    // The legend order follows the peak, so the leading series differs...
+    expect(quiet.series[0].name).toBe("api-02");
+    expect(busy.series[0].name).toBe("api-01");
+    // ...while each host keeps the colour it had.
+    expect(slotOf(quiet, "api-01")).toBe(slotOf(busy, "api-01"));
+    expect(slotOf(quiet, "api-02")).toBe(slotOf(busy, "api-02"));
+  });
+
+  it("never gives two visible series the same slot", () => {
+    const hosts = Array.from({ length: MAX_SERIES }, (_, i) => `host-${i}`);
+    const shaped = toSeries(fleet(hosts));
+    const slots = shaped.series.map((series) => series.slot);
+    expect(new Set(slots).size).toBe(MAX_SERIES);
+    expect(slots.every((slot) => slot >= 0 && slot < MAX_SERIES)).toBe(true);
+  });
+
+  it("drops series past the palette rather than recycling a colour", () => {
+    // A ninth hue is indistinguishable from one already in use, so the extra
+    // series are reported as hidden instead of being drawn ambiguously.
+    const hosts = Array.from(
+      { length: 20 },
+      (_, i) => `host-${String(i).padStart(2, "0")}`,
+    );
+    const shaped = toSeries(fleet(hosts));
+    expect(shaped.series).toHaveLength(MAX_SERIES);
+    expect(shaped.hidden).toBe(12);
+    expect(new Set(shaped.series.map((series) => series.slot)).size).toBe(
+      MAX_SERIES,
+    );
+    // The ones kept are the busiest, which is what an operator is looking for.
+    expect(shaped.series[0].name).toBe("host-19");
+  });
+
+  it("truncates a long categorical result and says how many were dropped", () => {
+    const rows = Array.from({ length: 40 }, (_, index) => [
+      `service-${index}`,
+      index,
+    ]);
+    const shaped = toSeries({
+      columns: ["service", "errors"],
+      rows,
+      execution_time_ms: 1,
+    });
+    expect(shaped.categories).toHaveLength(24);
+    expect(shaped.hidden).toBe(16);
+    expect(shaped.bars[0].values).toHaveLength(24);
+  });
+
+  it("reports nothing hidden when everything fits", () => {
+    const shaped = toSeries(fleet(["api-01", "api-02", "api-03"]));
+    expect(shaped.hidden).toBe(0);
+    expect(shaped.series).toHaveLength(3);
   });
 });

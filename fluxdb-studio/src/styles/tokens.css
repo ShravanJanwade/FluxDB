@@ -47,8 +47,10 @@
   --border-strong: #ccd4e2;
   --border-focus: var(--brand-500);
 
-  /* Status. */
-  --success: #059669;
+  /* Status. Each of these is used as text on `--surface`, so they are chosen
+     for at least 4.5:1 there rather than for brand appeal — #059669 looked
+     right and measured 3.8:1. */
+  --success: #047857;
   --success-bg: #e7f7f0;
   --warning: #b45309;
   --warning-bg: #fdf3e3;
@@ -64,16 +66,28 @@
   --accent-text: var(--brand-700);
   --ring: rgba(91, 91, 240, 0.34);
 
-  /* Chart series. Ordered for maximum separation at small sizes, and checked
-     for distinguishability under deuteranopia and protanopia. */
-  --series-1: #5b5bf0;
-  --series-2: #06b6d4;
-  --series-3: #d946a8;
-  --series-4: #f59e0b;
-  --series-5: #10b981;
-  --series-6: #8b5cf6;
-  --series-7: #ef4444;
-  --series-8: #0ea5e9;
+  /* Chart series: a fixed categorical order, never cycled.
+   *
+   * These are not brand colours and deliberately so. An earlier indigo-to-cyan
+   * set looked more on-brand but failed validation: its dark steps sat at
+   * OKLCH L 0.69-0.84, far above the 0.48-0.67 band a near-black plot surface
+   * needs, which is how you get glaring lines that are harder to tell apart
+   * rather than easier. This set passes the lightness band, the chroma floor,
+   * adjacent colour-vision separation (worst dE 9.1 light / 8.4 dark) and the
+   * normal-vision floor in both modes against these exact surfaces. Brand
+   * identity lives in the interface chrome, where it costs nothing to read.
+   *
+   * Slots 3, 4 and 5 fall below 3:1 on white, which obliges the relief a chart
+   * must have anyway: a legend for two or more series, and a table view. Both
+   * are present. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
 
   /* Type. */
   --font:
@@ -154,20 +168,25 @@
   --info: #60a5fa;
   --info-bg: rgba(59, 130, 246, 0.14);
 
-  --accent: var(--brand-400);
-  --accent-hover: var(--brand-300);
+  /* `--accent` is a fill that carries white text, so it stays dark enough for
+     4.5:1 against it. brand-400 was lighter and measured 3.3:1. Lighter tints
+     live in `--accent-text`, which is only ever used as a foreground. */
+  --accent: var(--brand-500);
+  --accent-hover: var(--brand-400);
   --accent-soft: rgba(91, 91, 240, 0.16);
   --accent-text: var(--brand-300);
   --ring: rgba(122, 131, 251, 0.4);
 
-  --series-1: #8b8bff;
-  --series-2: #22d3ee;
-  --series-3: #f472b6;
-  --series-4: #fbbf24;
-  --series-5: #34d399;
-  --series-6: #a78bfa;
-  --series-7: #fb7185;
-  --series-8: #38bdf8;
+  /* The same eight hues re-stepped for the dark surface, chosen for that band
+     rather than lightened from the light set. */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
