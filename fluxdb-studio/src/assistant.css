@@ -1,10 +1,18 @@
+/*
+ * The assistant panel.
+ *
+ * Colours come from the shared design tokens so the panel follows the
+ * console's light and dark themes; layout is unchanged from the original
+ * single-tenant console.
+ */
+
 .assistant-trigger {
   display: flex;
   align-items: center;
   gap: 7px;
-  color: #315de5;
-  background: #eef3ff;
-  border: 1px solid #dce5ff;
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
   border-radius: 7px;
   padding: 8px 12px;
   font-weight: 600;
@@ -18,20 +26,21 @@
   bottom: 0;
   width: 440px;
   max-width: 100vw;
-  z-index: 80;
-  background: #fff;
-  border-left: 1px solid #dee6f2;
-  box-shadow: -12px 0 40px #233b6610;
+  /* Above the console shell, below toasts. */
+  z-index: 85;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -12px 0 40px rgba(15, 23, 42, 0.07);
   display: flex;
   flex-direction: column;
-  color: #25354d;
+  color: var(--text);
 }
 .assistant-header {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 20px 16px;
-  border-bottom: 1px solid #e8edf5;
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 .assistant-header > div:nth-child(2) {
@@ -45,25 +54,25 @@
 }
 .assistant-header span {
   font-size: 0.72rem;
-  color: #74839a;
+  color: var(--text-muted);
 }
 .assistant-mark {
   display: grid;
   place-items: center;
   width: 38px;
   height: 38px;
-  border: 1px solid #dce5ff;
+  border: 1px solid var(--border);
   border-radius: 11px;
-  background: linear-gradient(145deg, #f5f8ff, #e5edff);
-  color: #4266da;
+  background: linear-gradient(145deg, var(--surface-hover), var(--accent-soft));
+  color: var(--accent);
 }
 .assistant-context {
   display: flex;
   justify-content: space-between;
   gap: 10px;
   padding: 11px 18px;
-  background: #f8faff;
-  border-bottom: 1px solid #e8edf5;
+  background: var(--bg-sunken);
+  border-bottom: 1px solid var(--border);
   font-size: 0.72rem;
   flex-shrink: 0;
 }
@@ -77,17 +86,17 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #3d72db;
+  background: var(--accent);
   flex-shrink: 0;
 }
 .assistant-context small {
-  color: #7888a0;
+  color: var(--text-muted);
   white-space: nowrap;
 }
 .assistant-settings {
   padding: 16px 20px;
-  border-bottom: 1px solid #e2e9f4;
-  background: #fafcff;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
   max-height: 55vh;
   overflow: auto;
   flex-shrink: 0;
@@ -97,7 +106,7 @@
   align-items: center;
   gap: 8px;
   font-size: 0.8rem;
-  color: #425774;
+  color: var(--text-secondary);
 }
 .assistant-settings-title .icon-button {
   margin-left: auto;
@@ -105,7 +114,7 @@
 .assistant-settings p {
   font-size: 0.75rem;
   line-height: 1.65;
-  color: #677a93;
+  color: var(--text-secondary);
   margin: 10px 0;
 }
 .assistant-settings label:not(.assistant-check) {
@@ -121,8 +130,8 @@
   display: block;
   margin-top: 6px;
   font-size: 0.8rem;
-  background: white;
-  border: 1px solid #d9e2ef;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   padding: 9px 10px;
   min-width: 0;
@@ -132,7 +141,7 @@
   margin-top: 6px;
 }
 .assistant-settings a {
-  color: #315ddd;
+  color: var(--accent-text);
 }
 .assistant-check {
   display: flex;
@@ -147,12 +156,12 @@
   width: 15px;
   height: 15px;
   margin: 2px 0 0;
-  accent-color: #345ee5;
+  accent-color: var(--accent);
   flex-shrink: 0;
 }
 .assistant-check small {
   display: block;
-  color: #7b899c;
+  color: var(--text-muted);
   margin-top: 3px;
   font-weight: 400;
 }
@@ -177,9 +186,9 @@
   height: 60px;
   display: grid;
   place-items: center;
-  color: #4166df;
-  background: radial-gradient(circle, #eef3ff, #fff);
-  border: 1px solid #e5ecfb;
+  color: var(--accent);
+  background: radial-gradient(circle, var(--accent-soft), var(--surface));
+  border: 1px solid var(--border);
   border-radius: 18px;
   margin: 0 0 22px;
 }
@@ -187,7 +196,7 @@
   font-size: 0.62rem;
   letter-spacing: 1.2px;
   font-weight: 650;
-  color: #8b9ab1;
+  color: var(--text-muted);
 }
 .assistant-welcome h3 {
   font-size: 1.3rem;
@@ -197,7 +206,7 @@
 .assistant-welcome p {
   font-size: 0.83rem;
   line-height: 1.75;
-  color: #6c7f98;
+  color: var(--text-muted);
   max-width: 340px;
 }
 .assistant-suggestions {
@@ -212,20 +221,20 @@
   gap: 12px;
   text-align: left;
   padding: 12px;
-  border: 1px solid #e0e7f2;
+  border: 1px solid var(--border);
   border-radius: 7px;
-  background: #fff;
-  color: #4d6281;
+  background: var(--surface);
+  color: var(--text-secondary);
   font-size: 0.77rem;
   line-height: 1.6;
 }
 .assistant-suggestions button:hover {
-  background: #f6f9ff;
-  border-color: #bacdf7;
+  background: var(--bg-sunken);
+  border-color: var(--border-strong);
 }
 .assistant-suggestions svg {
   flex-shrink: 0;
-  color: #90a0ba;
+  color: var(--text-muted);
 }
 .assistant-entry {
   margin-bottom: 23px;
@@ -237,7 +246,7 @@
   display: block;
   font-size: 0.67rem;
   font-weight: 650;
-  color: #8797ad;
+  color: var(--text-muted);
   margin-bottom: 7px;
 }
 .assistant-entry > p {
@@ -245,8 +254,8 @@
   margin: 0 0 10px;
 }
 .assistant-entry.user {
-  background: #f0f5ff;
-  border: 1px solid #e1eafb;
+  background: var(--surface-hover);
+  border: 1px solid var(--surface-active);
   border-radius: 10px;
   padding: 13px 15px;
   margin-left: 25px;
@@ -260,15 +269,15 @@
   white-space: pre;
   font-size: 0.72rem;
   line-height: 1.7;
-  background: #f6f8fc;
-  border: 1px solid #e5ebf5;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 12px;
 }
 .assistant-steps {
-  border-left: 2px solid #dce5f8;
+  border-left: 2px solid var(--border);
   padding-left: 10px;
-  color: #7890ad;
+  color: var(--text-muted);
   margin: 12px 0;
   font-size: 0.7rem;
 }
@@ -281,30 +290,30 @@
 }
 .assistant-steps small {
   display: block;
-  color: #8997aa;
+  color: var(--text-muted);
 }
 .assistant-action {
   padding: 15px;
-  border: 1px solid #dce5f5;
+  border: 1px solid var(--border);
   border-radius: 9px;
-  background: #fbfcff;
+  background: var(--surface);
   margin: 15px 0;
 }
 .assistant-action.destructive {
-  border-color: #ebd4d4;
-  background: #fffcfc;
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+  background: var(--danger-bg);
 }
 .assistant-action-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #496ede;
+  color: var(--accent-hover);
   font-size: 0.6rem;
   letter-spacing: 0.8px;
   font-weight: 700;
 }
 .assistant-action.destructive .assistant-action-title {
-  color: #bb5555;
+  color: var(--danger);
 }
 .assistant-action h4 {
   font-size: 0.88rem;
@@ -314,11 +323,11 @@
   font-size: 0.77rem;
   line-height: 1.65;
   margin: 7px 0;
-  color: #687b96;
+  color: var(--text-secondary);
 }
 .assistant-target {
   font-size: 0.7rem;
-  color: #8695a9;
+  color: var(--text-muted);
   display: flex;
   justify-content: space-between;
   gap: 10px;
@@ -326,12 +335,12 @@
   flex-wrap: wrap;
 }
 .assistant-target b {
-  color: #506687;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 .assistant-action pre {
   max-height: 210px;
-  background: white;
+  background: var(--surface);
   font-size: 0.7rem;
 }
 .assistant-action-buttons {
@@ -348,7 +357,7 @@
   display: block;
   font-size: 0.74rem;
   line-height: 1.7;
-  color: #a05353;
+  color: var(--danger);
   margin-top: 12px;
 }
 .assistant-confirm b {
@@ -356,17 +365,17 @@
 }
 .assistant-action summary {
   font-size: 0.7rem;
-  color: #6d83a2;
+  color: var(--text-muted);
   margin-top: 10px;
 }
 .assistant-action p.assistant-success {
-  color: #16876b;
+  color: var(--success);
   font-weight: 500;
 }
 .assistant-error {
-  color: #a94747;
-  background: #fff3f3;
-  border: 1px solid #f0dcdc;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-bg);
   padding: 10px 12px;
   border-radius: 6px;
   font-size: 0.76rem;
@@ -378,7 +387,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #6f83a3;
+  color: var(--text-muted);
   font-size: 0.76rem;
   padding: 8px 0;
 }
@@ -392,16 +401,16 @@
 }
 .assistant-compose {
   flex-shrink: 0;
-  border-top: 1px solid #e5ecf5;
+  border-top: 1px solid var(--border);
   padding: 12px 16px 15px;
-  background: white;
+  background: var(--surface);
 }
 .assistant-trust {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 0.61rem;
-  color: #8394ac;
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 .assistant-trust .icon-button {
@@ -410,13 +419,13 @@
 }
 .assistant-compose form {
   position: relative;
-  border: 1px solid #cad9f0;
+  border: 1px solid var(--border-strong);
   border-radius: 9px;
-  background: #fafcff;
+  background: var(--surface);
 }
 .assistant-compose form:focus-within {
-  border-color: #81a1eb;
-  box-shadow: 0 0 0 3px #edf3ff;
+  border-color: var(--brand-300);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .assistant-compose textarea {
   display: block;
@@ -428,7 +437,7 @@
   border: 0;
   outline: none;
   background: transparent;
-  color: #384f72;
+  color: var(--text);
   font-size: 0.8rem;
   line-height: 1.65;
   box-shadow: none;
@@ -441,8 +450,9 @@
   place-items: center;
   width: 30px;
   height: 30px;
-  background: #315fe7;
-  color: white;
+  /* A fill, so it uses the fill token rather than the foreground tint. */
+  background: var(--accent);
+  color: #fff;
   border: 0;
   border-radius: 7px;
   padding: 0;
@@ -452,14 +462,14 @@
   justify-content: space-between;
   gap: 8px;
   font-size: 0.58rem;
-  color: #8a9bb2;
+  color: var(--text-muted);
   margin-top: 9px;
 }
 .assistant-compose-footer button {
   padding: 0;
   background: none;
   border: 0;
-  color: #526ec0;
+  color: var(--accent-text);
   font-size: 0.65rem;
 }
 @media (min-width: 1500px) {

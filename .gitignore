@@ -36,6 +36,10 @@ yarn-error.log*
 
 # FluxDB specific
 *.db
+# Control-plane metadata when a data directory sits outside the ignored paths
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
 tmp/
 jira_data.csv
 

@@ -26,12 +26,27 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: "dist",
+      // The charts chunk is echarts core plus the line and bar renderers. It
+      // is loaded only when a console screen mounts, never on the marketing
+      // page, so its size is not on the critical path.
+      chunkSizeWarningLimit: 700,
       rollupOptions: {
         output: {
           manualChunks(id) {
             if (!id.includes("node_modules")) return;
-            if (id.includes("/zrender/")) return "canvas";
-            if (id.includes("/echarts/")) return "charts";
+            // echarts and zrender import each other, so they belong in one
+            // chunk; splitting them produced a circular chunk graph.
+            if (id.includes("/echarts/") || id.includes("/zrender/")) {
+              return "charts";
+            }
+            if (
+              id.includes("/react/") ||
+              id.includes("/react-dom/") ||
+              id.includes("/react-router") ||
+              id.includes("/scheduler/")
+            ) {
+              return "react";
+            }
             return "vendor";
           },
         },

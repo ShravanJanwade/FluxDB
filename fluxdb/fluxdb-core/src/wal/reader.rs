@@ -4,7 +4,7 @@ use super::{WalConfig, WalEntry};
 use crate::{FluxError, Result};
 use std::fs::{self, File};
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// WAL reader for recovering entries after crash
 pub struct WalReader {
@@ -111,7 +111,7 @@ impl WalReader {
         Ok(entries)
     }
 
-    fn parse_segment_id(path: &PathBuf) -> Option<u64> {
+    fn parse_segment_id(path: &Path) -> Option<u64> {
         path.file_name()
             .and_then(|n| n.to_str())
             .and_then(|s| s.strip_prefix("wal_"))
@@ -139,7 +139,7 @@ mod tests {
         {
             let writer = WalWriter::new(config.clone()).unwrap();
             for i in 0..10 {
-                let key = SeriesKey::new("temp").with_tag("id", &i.to_string());
+                let key = SeriesKey::new("temp").with_tag("id", i.to_string());
                 let data = DataPoint::new(i * 1000, "value", FieldValue::Float(23.5 + i as f64));
                 let points = vec![Point::new(key, data)];
                 let entry = WalEntry::write("testdb", &points).unwrap();

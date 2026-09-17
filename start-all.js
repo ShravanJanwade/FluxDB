@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const net = require('node:net');
+const crypto = require('node:crypto');
 
 const root = __dirname;
 if (fs.existsSync(path.join(root, '.env'))) process.loadEnvFile(path.join(root, '.env'));
@@ -66,6 +67,23 @@ async function ready(url, child) {
   }
   throw new Error('Timed out waiting for ' + url);
 }
+/**
+ * A development-only session secret, persisted under .runtime so restarting the
+ * launcher does not sign you out. A deployment sets FLUXDB_SESSION_SECRET
+ * itself; without either, the server generates an ephemeral one and says so.
+ */
+function developmentSecret() {
+  const file = path.join(root, '.runtime', 'dev-session-secret');
+  try {
+    if (fs.existsSync(file)) return fs.readFileSync(file, 'utf8').trim();
+    const secret = crypto.randomBytes(32).toString('hex');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, secret, { mode: 0o600 });
+    return secret;
+  } catch {
+    return crypto.randomBytes(32).toString('hex');
+  }
+}
 async function main() {
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('FLUXDB_STUDIO_PORT must be a valid port.');
   await freePort('127.0.0.1', Number(apiUrl.port || 80));
@@ -77,17 +95,37 @@ async function main() {
     await run('npm', ['ci'], studio, windows);
   }
   if (stopping) return;
-  const server = start(path.join(backend, 'target', 'release', windows ? 'fluxdb.exe' : 'fluxdb'), [], backend);
+  const server = start(path.join(backend, 'target', 'release', windows ? 'fluxdb.exe' : 'fluxdb'), [], backend, {
+    ...process.env,
+    FLUXDB_SESSION_SECRET: process.env.FLUXDB_SESSION_SECRET || developmentSecret(),
+  });
   await ready(new URL('/health', apiUrl), server);
   const web = start(process.execPath, [path.join(studio, 'node_modules', 'vite', 'bin', 'vite.js'), '--host', '127.0.0.1', '--port', String(port), '--strictPort'], studio, { ...process.env, FLUXDB_PROXY_TARGET: apiUrl.origin });
   await ready(webUrl, web);
   server.once('exit', code => { if (!stopping) void stop(code || 1); });
   web.once('exit', code => { if (!stopping) void stop(code || 0); });
-  console.log('FluxDB Studio: ' + webUrl + '\nAPI: ' + apiUrl.origin + '\nPress Ctrl+C to stop both services.');
+  console.log([
+    '',
+    '  FluxDB is running.',
+    '',
+    '  Console    ' + webUrl,
+    '  Demo       ' + webUrl + '/login?demo=1   (one click, no account needed)',
+    '  Docs       ' + webUrl + '/docs',
+    '  API        ' + apiUrl.origin,
+    '',
+    '  Press Ctrl+C to stop both services.',
+    '',
+  ].join('\n'));
   if (process.argv.includes('--verify')) {
-    const response = await fetch(webUrl + '/api/v1/health');
-    if (!response.ok || (await response.json()).status !== 'ok') throw new Error('Browser proxy health check failed.');
-    console.log('PASS: server, browser, and API proxy readiness');
+    const health = await fetch(webUrl + '/api/v1/health');
+    if (!health.ok || (await health.json()).status !== 'ok') throw new Error('Browser proxy health check failed.');
+    // The control plane serves accounts and the demo, so reporting success
+    // without it would be misleading.
+    const config = await fetch(webUrl + '/api/cloud/config');
+    if (!config.ok) throw new Error('Control plane is not reachable through the browser proxy.');
+    const store = (await config.json()).control_plane;
+    if (!store) throw new Error('Control plane did not report a metadata store.');
+    console.log('PASS: server, browser, API proxy, and control plane (' + store + ') readiness');
     await stop();
   }
 }

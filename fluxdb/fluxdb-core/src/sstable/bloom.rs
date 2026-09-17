@@ -14,7 +14,7 @@ impl BloomFilter {
     /// Create a new bloom filter
     pub fn new(num_keys: usize, bits_per_key: usize) -> Self {
         let num_bits = num_keys * bits_per_key;
-        let num_bytes = ((num_bits + 7) / 8).max(1);
+        let num_bytes = num_bits.div_ceil(8).max(1);
         let num_bits = num_bytes * 8;
 
         // Optimal number of hash functions

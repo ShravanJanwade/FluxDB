@@ -73,7 +73,7 @@ impl Service {
                         "Cannot reach Gemini. Check server internet access or try a faster model.",
                     )
                 })?;
-            if !matches!(response.status().as_u16(), 502 | 503 | 504) || attempt == 2 {
+            if !matches!(response.status().as_u16(), 502..=504) || attempt == 2 {
                 return Ok(response);
             }
             let retry_after = response
@@ -273,9 +273,9 @@ fn validate_action(action: &Action, selected: &str) -> Result<(), String> {
             }
             for point in points {
                 allowed_keys(point, &["measurement", "tags", "timestamp", "fields"])?;
-                let input: super::console::PointInput =
+                let input: super::data::PointInput =
                     serde_json::from_value(point.clone()).map_err(|e| e.to_string())?;
-                input.convert().map_err(|(_, e)| e.0.error)?;
+                input.convert().map_err(|e| e.message().to_string())?;
             }
         }
         "delete_points" => {
@@ -460,7 +460,7 @@ async fn run(
                 401 | 403 => "Gemini rejected the key or project permissions. Check the API key in Google AI Studio.",
                 429 => "Gemini quota or rate limit reached. Check your API project billing and quota, then retry.",
                 400 | 404 => "Gemini rejected the model or request. Check that this model ID is available and supports generateContent function calling.",
-                502 | 503 | 504 => "The selected Gemini model remains unavailable after bounded retry handling. Open Assistant settings, load available models, and select another model, or retry later. No proposed database changes were executed.",
+                502..=504 => "The selected Gemini model remains unavailable after bounded retry handling. Open Assistant settings, load available models, and select another model, or retry later. No proposed database changes were executed.",
                 _ => "Gemini is temporarily unavailable. Retry later.",
             }
             };

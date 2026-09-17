@@ -107,15 +107,9 @@ impl Accumulator for MeanAccumulator {
 }
 
 /// Min accumulator
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct MinAccumulator {
     min: Option<f64>,
-}
-
-impl Default for MinAccumulator {
-    fn default() -> Self {
-        Self { min: None }
-    }
 }
 
 impl Accumulator for MinAccumulator {
@@ -142,15 +136,9 @@ impl Accumulator for MinAccumulator {
 }
 
 /// Max accumulator
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct MaxAccumulator {
     max: Option<f64>,
-}
-
-impl Default for MaxAccumulator {
-    fn default() -> Self {
-        Self { max: None }
-    }
 }
 
 impl Accumulator for MaxAccumulator {

@@ -79,15 +79,15 @@ impl GorillaEncoder {
         if delta_of_delta == 0 {
             // '0' bit: delta is the same
             self.writer.write_bit(false);
-        } else if delta_of_delta >= -63 && delta_of_delta <= 64 {
+        } else if (-63..=64).contains(&delta_of_delta) {
             // '10' + 7 bits: delta_of_delta fits in 7 bits
             self.writer.write_bits(0b10, 2);
             self.writer.write_bits((delta_of_delta + 63) as u64, 7);
-        } else if delta_of_delta >= -255 && delta_of_delta <= 256 {
+        } else if (-255..=256).contains(&delta_of_delta) {
             // '110' + 9 bits
             self.writer.write_bits(0b110, 3);
             self.writer.write_bits((delta_of_delta + 255) as u64, 9);
-        } else if delta_of_delta >= -2047 && delta_of_delta <= 2048 {
+        } else if (-2047..=2048).contains(&delta_of_delta) {
             // '1110' + 12 bits
             self.writer.write_bits(0b1110, 4);
             self.writer.write_bits((delta_of_delta + 2047) as u64, 12);

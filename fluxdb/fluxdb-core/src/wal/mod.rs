@@ -15,9 +15,10 @@ pub use writer::WalWriter;
 use std::path::PathBuf;
 
 /// WAL sync policy
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum SyncPolicy {
     /// Sync after every write (safest, slowest)
+    #[default]
     Immediate,
     /// Sync after N writes
     EveryN(usize),
@@ -25,12 +26,6 @@ pub enum SyncPolicy {
     Interval { millis: u64 },
     /// Never sync (OS decides, fastest, least safe)
     None,
-}
-
-impl Default for SyncPolicy {
-    fn default() -> Self {
-        SyncPolicy::Immediate
-    }
 }
 
 /// WAL configuration

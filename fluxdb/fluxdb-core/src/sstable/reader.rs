@@ -131,9 +131,7 @@ impl SSTableReader {
 
         // Verify magic
         let mut magic = [0u8; 4];
-        cursor
-            .read_exact(&mut magic)
-            .map_err(|e| FluxError::Io(e))?;
+        cursor.read_exact(&mut magic).map_err(FluxError::Io)?;
         if &magic != b"FLUX" {
             return Err(FluxError::InvalidFormat("Invalid SSTable magic".into()));
         }
@@ -145,9 +143,7 @@ impl SSTableReader {
 
         let mut cursor = std::io::Cursor::new(&header);
         let mut magic = [0u8; 4];
-        cursor
-            .read_exact(&mut magic)
-            .map_err(|e| FluxError::Io(e))?;
+        cursor.read_exact(&mut magic).map_err(FluxError::Io)?;
         if &magic != b"FLUX" {
             return Err(FluxError::InvalidFormat("Invalid SSTable header".into()));
         }
@@ -257,7 +253,7 @@ impl SSTableReader {
 
             for (ts, val) in points {
                 if ts >= time_range.start && ts <= time_range.end {
-                    let fields = field_data.entry(ts).or_insert_with(Fields::new);
+                    let fields = field_data.entry(ts).or_default();
                     fields.insert(entry.field_name.clone(), FieldValue::Float(val));
                 }
             }

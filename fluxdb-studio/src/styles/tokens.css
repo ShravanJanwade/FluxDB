@@ -1,0 +1,599 @@
+/*
+ * FluxDB design tokens.
+ *
+ * One scale for colour, type, spacing, radius and elevation, expressed as
+ * custom properties so light and dark are the same stylesheet with a different
+ * palette. Components never hard-code a hex value; that is what keeps the
+ * marketing page, the console and the assistant panel looking like one product.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+:root {
+  color-scheme: light;
+
+  /* Brand. Indigo through cyan reads as "time moving left to right", and the
+     two ends give charts a usable sequential ramp. */
+  --brand-50: #eef1ff;
+  --brand-100: #dfe4ff;
+  --brand-200: #c3cbff;
+  --brand-300: #9ea9ff;
+  --brand-400: #7a83fb;
+  --brand-500: #5b5bf0;
+  --brand-600: #4842d9;
+  --brand-700: #3a34ae;
+  --brand-800: #2d2882;
+  --cyan-400: #22d3ee;
+  --cyan-500: #06b6d4;
+  --cyan-600: #0891b2;
+
+  /* Surfaces, light. */
+  --bg: #ffffff;
+  --bg-sunken: #f6f8fc;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-hover: #f4f7fd;
+  --surface-active: #eceff9;
+  --overlay: rgba(15, 23, 42, 0.42);
+
+  /* Ink. */
+  --text: #0f172a;
+  --text-secondary: #46536b;
+  --text-muted: #6b7789;
+  --text-inverse: #ffffff;
+
+  /* Lines. */
+  --border: #e3e8f1;
+  --border-strong: #ccd4e2;
+  --border-focus: var(--brand-500);
+
+  /* Status. Each of these is used as text on `--surface`, so they are chosen
+     for at least 4.5:1 there rather than for brand appeal — #059669 looked
+     right and measured 3.8:1. */
+  --success: #047857;
+  --success-bg: #e7f7f0;
+  --warning: #b45309;
+  --warning-bg: #fdf3e3;
+  --danger: #dc2626;
+  --danger-bg: #fdeceb;
+  --info: #2563eb;
+  --info-bg: #eaf0fe;
+
+  /* Accents used by buttons and focus rings. */
+  --accent: var(--brand-600);
+  --accent-hover: var(--brand-700);
+  --accent-soft: var(--brand-50);
+  --accent-text: var(--brand-700);
+  --ring: rgba(91, 91, 240, 0.34);
+
+  /* Chart series: a fixed categorical order, never cycled.
+   *
+   * These are not brand colours and deliberately so. An earlier indigo-to-cyan
+   * set looked more on-brand but failed validation: its dark steps sat at
+   * OKLCH L 0.69-0.84, far above the 0.48-0.67 band a near-black plot surface
+   * needs, which is how you get glaring lines that are harder to tell apart
+   * rather than easier. This set passes the lightness band, the chroma floor,
+   * adjacent colour-vision separation (worst dE 9.1 light / 8.4 dark) and the
+   * normal-vision floor in both modes against these exact surfaces. Brand
+   * identity lives in the interface chrome, where it costs nothing to read.
+   *
+   * Slots 3, 4 and 5 fall below 3:1 on white, which obliges the relief a chart
+   * must have anyway: a legend for two or more series, and a table view. Both
+   * are present. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+
+  /* Type. */
+  --font:
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --text-4xl: 3rem;
+  --text-5xl: 3.75rem;
+
+  /* Space, on a 4px grid. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-sm:
+    0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow: 0 4px 12px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.05);
+  --shadow-lg:
+    0 16px 40px rgba(15, 23, 42, 0.14), 0 2px 8px rgba(15, 23, 42, 0.06);
+  --shadow-glow:
+    0 0 0 1px rgba(91, 91, 240, 0.18), 0 12px 32px rgba(91, 91, 240, 0.16);
+
+  --sidebar-width: 268px;
+  --topbar-height: 56px;
+  --transition: 140ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0a0c12;
+  --bg-sunken: #070910;
+  --surface: #11141d;
+  --surface-raised: #171b26;
+  --surface-hover: #1b2030;
+  --surface-active: #222839;
+  --overlay: rgba(2, 4, 10, 0.68);
+
+  --text: #e9edf6;
+  --text-secondary: #a9b4c8;
+  --text-muted: #77839a;
+  --text-inverse: #0a0c12;
+
+  --border: #222838;
+  --border-strong: #323a4e;
+
+  --success: #34d399;
+  --success-bg: rgba(16, 185, 129, 0.14);
+  --warning: #fbbf24;
+  --warning-bg: rgba(245, 158, 11, 0.14);
+  --danger: #f87171;
+  --danger-bg: rgba(239, 68, 68, 0.15);
+  --info: #60a5fa;
+  --info-bg: rgba(59, 130, 246, 0.14);
+
+  /* `--accent` is a fill that carries white text, so it stays dark enough for
+     4.5:1 against it. brand-400 was lighter and measured 3.3:1. Lighter tints
+     live in `--accent-text`, which is only ever used as a foreground. */
+  --accent: var(--brand-500);
+  --accent-hover: var(--brand-400);
+  --accent-soft: rgba(91, 91, 240, 0.16);
+  --accent-text: var(--brand-300);
+  --ring: rgba(122, 131, 251, 0.4);
+
+  /* The same eight hues re-stepped for the dark surface, chosen for that band
+     rather than lightened from the light set. */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.62);
+  --shadow-glow:
+    0 0 0 1px rgba(122, 131, 251, 0.28), 0 14px 40px rgba(60, 60, 200, 0.28);
+}
+
+/* ==========================================================================
+   Reset and base
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--text-base);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-synthesis-weight: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+blockquote,
+dl,
+dd {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.018em;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+}
+
+a {
+  color: var(--accent-text);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+svg {
+  flex-shrink: 0;
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  font-variant-ligatures: none;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: var(--space-6) 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+/* Scrollbars are styled so long tables and query results do not introduce a
+   bright strip into the dark theme. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   Primitives shared by the marketing site and the console
+   ========================================================================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  padding: 8px 14px;
+  font-size: var(--text-base);
+  font-weight: 550;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    transform var(--transition),
+    box-shadow var(--transition);
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: transparent;
+}
+
+.btn-danger {
+  background: var(--danger);
+  border-color: transparent;
+  color: #fff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger);
+  filter: brightness(0.92);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: transparent;
+}
+
+.btn-lg {
+  padding: 12px 22px;
+  font-size: var(--text-md);
+  border-radius: var(--radius-md);
+}
+
+.btn-sm {
+  padding: 5px 10px;
+  font-size: var(--text-sm);
+  border-radius: var(--radius-sm);
+}
+
+.btn-icon {
+  padding: 7px;
+  border-radius: var(--radius-sm);
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 8px 11px;
+  font-size: var(--text-base);
+  color: var(--text);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.textarea {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.select {
+  appearance: none;
+  padding-right: 30px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) calc(50% + 1px),
+    calc(100% - 11px) calc(50% + 1px);
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: 550;
+  color: var(--text-secondary);
+}
+
+.hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  background: var(--surface-active);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.badge-success {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.badge-warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.badge-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.badge-info {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+.badge-accent {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Skeleton shimmer used while a panel's data is in flight, so the layout does
+   not jump when it arrives. */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-hover) 25%,
+    var(--surface-active) 50%,
+    var(--surface-hover) 75%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
