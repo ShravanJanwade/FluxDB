@@ -482,6 +482,13 @@ function ConnectDialog({
           databases. If the token is rejected you will be told that
           specifically, rather than being shown a generic failure.
         </Notice>
+        <Notice tone="warning" title="An administration token is server-wide">
+          That surface has no users or scopes: the token you enter can read and
+          change every database on that server. On a server running FluxDB's own
+          control plane, that includes the internal{" "}
+          <code>t&#123;project&#125;_&#123;bucket&#125;</code> databases behind
+          other accounts' projects. Use a server you own.
+        </Notice>
       </div>
     </Modal>
   );
