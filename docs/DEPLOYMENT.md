@@ -238,6 +238,14 @@ can still point the hosted console at it as a self-hosted connection.
 
 ## Troubleshooting
 
+**`error: invalid local: resolve : lstat .../deploy: no such file or directory`**
+— the service is still configured with a Dockerfile path that no longer exists.
+Render matches Blueprint services *by name*: if `name:` in `render.yaml` differs
+from the existing service's name, Render leaves that service's settings
+untouched and treats the definition as a new service. Either set **Dockerfile
+Path** to `./Dockerfile` and **Docker Build Context** to `.` in the service's
+settings, or make `name:` match the existing service and re-sync the Blueprint.
+
 **"Control plane could not start"** — `DATABASE_URL` is wrong or unreachable.
 The message includes the underlying error. This is a hard startup failure on
 purpose: serving a signed-out product would look like data loss to every account

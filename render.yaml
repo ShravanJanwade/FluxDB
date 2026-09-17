@@ -14,7 +14,11 @@
 #   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
 services:
   - type: web
-    name: fluxdb
+    # Render matches Blueprint services by name. Renaming this would leave an
+    # existing service untouched — keeping its old Dockerfile path, which is how
+    # a rename once broke a deploy with `lstat .../deploy: no such file` — and
+    # would create a second service alongside it.
+    name: fluxdb-demo
     runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile
