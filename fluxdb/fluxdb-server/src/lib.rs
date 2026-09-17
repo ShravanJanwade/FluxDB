@@ -14,6 +14,7 @@
 
 pub mod api;
 pub mod cloud;
+pub mod gemini;
 
 use fluxdb_core::storage::{StorageConfig, StorageEngine};
 use std::net::SocketAddr;
@@ -31,6 +32,11 @@ pub struct ServerConfig {
     /// whole deployment: API, static files and the single-page fallback on one
     /// port, with no reverse proxy to misconfigure.
     pub static_dir: Option<PathBuf>,
+    /// Override for the AI provider's base URL. Passed explicitly rather than
+    /// read from the environment so tests running in parallel can each point
+    /// the agent at their own stand-in provider, the same reason `static_dir`
+    /// stopped being an environment variable.
+    pub gemini_endpoint: Option<String>,
 }
 
 impl Default for ServerConfig {
@@ -39,6 +45,7 @@ impl Default for ServerConfig {
             http_addr: "127.0.0.1:8086".parse().expect("valid default address"),
             data_dir: PathBuf::from("data"),
             static_dir: None,
+            gemini_endpoint: None,
         }
     }
 }
@@ -168,7 +175,12 @@ pub async fn build(
     let telemetry = api::console::Monitor::new(admin_token);
     let cloud = match control_plane {
         Some(url) => Some(
-            cloud::Cloud::open(engine.clone(), &url, telemetry.clone())
+            cloud::Cloud::open(
+                    engine.clone(),
+                    &url,
+                    telemetry.clone(),
+                    config.gemini_endpoint.as_deref(),
+                )
                 .await
                 // A control plane that cannot start is a configuration problem
                 // worth failing on: silently serving a signed-out product would

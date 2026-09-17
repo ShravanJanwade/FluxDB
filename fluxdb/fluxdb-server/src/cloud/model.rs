@@ -519,6 +519,129 @@ impl Entity for AuditEntry {
     }
 }
 
+/// A saved investigation the agent can run on demand or on a timer.
+///
+/// The instruction is a standing question in the operator's own words. It is
+/// prompt input, never trusted as configuration: the agent still resolves
+/// buckets through the tenancy path and still proposes rather than executes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SavedAgent {
+    pub id: String,
+    pub project_id: String,
+    pub name: String,
+    pub instruction: String,
+    /// Minutes between automatic runs. Zero means run only when asked.
+    pub interval_minutes: u32,
+    pub enabled: bool,
+    pub created_by: String,
+    pub created_at: i64,
+    pub last_run_at: Option<i64>,
+    pub last_state: Option<String>,
+}
+
+impl Entity for SavedAgent {
+    const KIND: &'static str = "agent";
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+    fn parent(&self) -> Option<String> {
+        Some(self.project_id.clone())
+    }
+}
+
+impl SavedAgent {
+    /// Whether the timer should pick this agent up now. A run that has never
+    /// happened is due immediately.
+    pub fn due(&self, now: i64) -> bool {
+        if !self.enabled || self.interval_minutes == 0 {
+            return false;
+        }
+        match self.last_run_at {
+            None => true,
+            Some(last) => now - last >= i64::from(self.interval_minutes) * 60_000,
+        }
+    }
+}
+
+/// What one agent investigation concluded, kept so the console can show a
+/// timeline and so a scheduled agent has somewhere to report.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentRun {
+    pub id: String,
+    pub project_id: String,
+    /// Set when this run came from a [`SavedAgent`] rather than a question.
+    pub agent_id: Option<String>,
+    pub kind: AgentRunKind,
+    pub question: String,
+    pub summary: String,
+    pub findings: Vec<AgentFinding>,
+    /// The tool calls made, in order, so a reader can audit the reasoning.
+    pub steps: Vec<AgentStep>,
+    /// Operations the agent prepared. Never executed by the run itself.
+    pub proposals: Vec<serde_json::Value>,
+    pub state: AgentRunState,
+    pub error: Option<String>,
+    pub duration_ms: u32,
+    pub account_id: String,
+    pub at: i64,
+}
+
+impl Entity for AgentRun {
+    const KIND: &'static str = "agentrun";
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+    fn parent(&self) -> Option<String> {
+        Some(self.project_id.clone())
+    }
+    fn owner(&self) -> Option<String> {
+        Some(self.account_id.clone())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AgentRunKind {
+    /// A single conversational turn.
+    Chat,
+    /// The one-click investigation, which fans out across buckets.
+    Insights,
+    /// A [`SavedAgent`] fired by the timer or run by hand.
+    Scheduled,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AgentRunState {
+    Ok,
+    /// Some sub-investigations failed; the rest of the report stands.
+    Partial,
+    Failed,
+}
+
+/// One observation, severity-tagged so the console can rank them.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentFinding {
+    pub title: String,
+    pub detail: String,
+    pub severity: Severity,
+    /// Bucket the finding concerns, when it concerns one.
+    pub bucket_id: Option<String>,
+    /// Query that produced it, so a reader can re-run and check.
+    pub evidence: Option<String>,
+}
+
+/// One tool call and how it resolved.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentStep {
+    pub tool: String,
+    pub detail: String,
+    pub ok: bool,
+    pub duration_ms: u32,
+    /// Set when this step ran inside a fanned-out sub-investigation.
+    pub agent: Option<String>,
+}
+
 // ============================================================================
 // Validation
 // ============================================================================

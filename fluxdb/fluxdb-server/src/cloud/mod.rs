@@ -13,6 +13,7 @@
 //! account therefore cannot read, write or drop another tenant's data even by
 //! guessing names.
 
+pub mod agent;
 pub mod auth;
 pub mod model;
 mod routes_auth;
@@ -85,6 +86,32 @@ impl IntoResponse for Fail {
 impl std::fmt::Display for Fail {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.message)
+    }
+}
+
+impl Fail {
+    pub fn service_unavailable(message: impl Into<String>) -> Fail {
+        Fail {
+            status: StatusCode::SERVICE_UNAVAILABLE,
+            code: "unavailable",
+            message: message.into(),
+        }
+    }
+
+    /// Relay an upstream status without flattening it. A provider's 429 has to
+    /// stay a 429 so the browser can tell "slow down" apart from "broken".
+    pub fn from_status(status: u16, message: impl Into<String>) -> Fail {
+        let status = StatusCode::from_u16(status).unwrap_or(StatusCode::BAD_GATEWAY);
+        Fail {
+            status,
+            code: match status {
+                StatusCode::TOO_MANY_REQUESTS => "rate_limited",
+                StatusCode::BAD_REQUEST => "invalid_request",
+                StatusCode::SERVICE_UNAVAILABLE => "unavailable",
+                _ => "upstream",
+            },
+            message: message.into(),
+        }
     }
 }
 
@@ -204,6 +231,15 @@ impl Throttle {
         entry.1 <= limit
     }
 
+    /// How much of `key`'s allowance the current window has consumed. Read-only:
+    /// asking must not itself count against the limit.
+    pub fn used(&mut self, key: &str, window_ms: i64, now: i64) -> u32 {
+        match self.windows.get(key) {
+            Some((start, count)) if now - *start < window_ms => *count,
+            _ => 0,
+        }
+    }
+
     pub fn reset(&mut self, key: &str) {
         self.windows.remove(key);
     }
@@ -218,6 +254,10 @@ pub struct Cloud {
     pub engine: Arc<StorageEngine>,
     pub secrets: auth::Secrets,
     pub http: reqwest::Client,
+    /// One pooled client for the AI provider. Held here rather than built per
+    /// round so connections are reused, and so a test can point the whole agent
+    /// at a stand-in provider without touching a global.
+    pub gemini: crate::gemini::Client,
     pub throttle: Mutex<Throttle>,
     /// Requests served by the cloud API are recorded in the same latency
     /// history the console charts.
@@ -231,6 +271,7 @@ impl Cloud {
         engine: Arc<StorageEngine>,
         control_plane_url: &str,
         telemetry: crate::api::console::Monitor,
+        gemini_endpoint: Option<&str>,
     ) -> anyhow::Result<Arc<Self>> {
         let store = MetaStore::connect(control_plane_url).await?;
         let (secrets, notes) = auth::Secrets::from_env();
@@ -247,6 +288,10 @@ impl Cloud {
                 .build()?,
             throttle: Mutex::new(Throttle::default()),
             telemetry,
+            gemini: match gemini_endpoint {
+                Some(endpoint) => crate::gemini::Client::with_endpoint(endpoint),
+                None => crate::gemini::Client::new(),
+            },
         });
         tracing::info!("Control plane ready on {} storage", cloud.store.backend());
         cloud.bootstrap_demo().await?;
@@ -387,6 +432,92 @@ impl Cloud {
     }
 
     // ---- quotas -----------------------------------------------------------
+
+    /// Organization owning a project, for audit entries that only have a
+    /// project id to hand.
+    pub async fn project_org(&self, project_id: &str) -> Result<String> {
+        Ok(self
+            .store
+            .get::<Project>(project_id)
+            .await?
+            .map(|project| project.org_id)
+            .unwrap_or_default())
+    }
+
+    /// A compact digest of recent request history for the agent.
+    ///
+    /// The raw sample buffer holds two thousand entries, which is far more than
+    /// a model context should carry, so this reduces it to percentiles, an error
+    /// rate and the slowest operations — the shape a person actually reads when
+    /// troubleshooting.
+    pub fn telemetry_summary(&self) -> serde_json::Value {
+        use serde_json::json;
+        let raw = self.telemetry.telemetry();
+        let samples: Vec<&serde_json::Value> = raw["samples"]
+            .as_array()
+            .map(|s| s.iter().collect())
+            .unwrap_or_default();
+        let mut durations: Vec<f64> = samples
+            .iter()
+            .filter_map(|sample| sample["duration_ms"].as_f64())
+            .collect();
+        durations.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let percentile = |fraction: f64| -> Option<f64> {
+            if durations.is_empty() {
+                return None;
+            }
+            let index = ((fraction * durations.len() as f64) as usize).min(durations.len() - 1);
+            Some((durations[index] * 1000.0).round() / 1000.0)
+        };
+        let failures: Vec<&&serde_json::Value> = samples
+            .iter()
+            .filter(|sample| {
+                sample["status"]
+                    .as_u64()
+                    .is_some_and(|status| status >= 400)
+            })
+            .collect();
+        // Group failures by status and operation so a repeated fault reads as
+        // one line with a count rather than hundreds of samples.
+        let mut grouped: std::collections::BTreeMap<String, usize> =
+            std::collections::BTreeMap::new();
+        for failure in &failures {
+            let key = format!(
+                "{} {}",
+                failure["status"].as_u64().unwrap_or(0),
+                failure["operation"].as_str().unwrap_or("?")
+            );
+            *grouped.entry(key).or_default() += 1;
+        }
+        let mut slowest: Vec<&&serde_json::Value> = samples.iter().collect();
+        slowest.sort_by(|a, b| {
+            b["duration_ms"]
+                .as_f64()
+                .unwrap_or(0.0)
+                .partial_cmp(&a["duration_ms"].as_f64().unwrap_or(0.0))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        json!({
+            "uptime_seconds": raw["uptime_seconds"],
+            "requests_sampled": samples.len(),
+            "sample_capacity": raw["capacity"],
+            "note": "A bounded in-memory history of recent requests, reset on restart. Server processing time only, not network latency.",
+            "latency_ms": {"p50": percentile(0.50), "p95": percentile(0.95), "p99": percentile(0.99),
+                "max": durations.last().copied()},
+            "errors": {
+                "count": failures.len(),
+                "rate": if samples.is_empty() { None } else {
+                    Some(((failures.len() as f64 / samples.len() as f64) * 10_000.0).round() / 10_000.0)
+                },
+                "by_operation": grouped.into_iter().map(|(key, count)| json!({"operation": key, "count": count}))
+                    .take(15).collect::<Vec<_>>(),
+            },
+            "slowest": slowest.into_iter().take(10).map(|sample| json!({
+                "operation": sample["operation"], "duration_ms": sample["duration_ms"],
+                "status": sample["status"],
+            })).collect::<Vec<_>>(),
+        })
+    }
 
     /// Stored points across every bucket of a project.
     pub fn project_points(&self, project_id: &str) -> usize {
@@ -909,6 +1040,7 @@ pub fn routes(cloud: CloudState) -> Router {
         .merge(routes_auth::routes())
         .merge(routes_workspace::routes())
         .merge(routes_data::routes())
+        .merge(agent::routes())
         .layer(axum::middleware::from_fn_with_state(
             cloud.clone(),
             routes_auth::guard_origin,
@@ -949,6 +1081,10 @@ pub fn spawn_maintenance(cloud: CloudState) -> tokio::task::JoinHandle<()> {
             if let Err(error) = sweep(&cloud).await {
                 tracing::error!("control plane maintenance: {error}");
             }
+            // Scheduled agents run outside `sweep` because an investigation
+            // waits on a provider for tens of seconds; a failure there must not
+            // stop session expiry or monitor evaluation from happening.
+            agent::run_due(&cloud).await;
         }
     })
 }

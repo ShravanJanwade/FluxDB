@@ -106,13 +106,23 @@ impl Client {
 /// Build the application over throwaway directories. The `TempDir` is returned
 /// so it outlives the test.
 async fn app() -> (tempfile::TempDir, Router) {
-    app_with_console(None).await
+    build_app(None, None).await
 }
 
 /// `console` is the directory a built console would live in. Passing it
 /// explicitly matters: it used to come from the environment, and tests running
 /// in parallel raced over that single variable.
 async fn app_with_console(console: Option<std::path::PathBuf>) -> (tempfile::TempDir, Router) {
+    build_app(console, None).await
+}
+
+/// Build the application with the agent pointed at `gemini`, a stand-in
+/// provider. Passed through configuration rather than an environment variable
+/// so tests can run in parallel.
+async fn build_app(
+    console: Option<std::path::PathBuf>,
+    gemini: Option<String>,
+) -> (tempfile::TempDir, Router) {
     // Sessions are signed, so a stable secret is required; the control plane
     // and data directory are per-test.
     std::env::set_var(
@@ -130,6 +140,7 @@ async fn app_with_console(console: Option<std::path::PathBuf>) -> (tempfile::Tem
         http_addr: "127.0.0.1:0".parse().unwrap(),
         data_dir: dir.path().to_path_buf(),
         static_dir: console,
+        gemini_endpoint: gemini,
     };
     let (_engine, _cloud, router) = fluxdb_server::build(&config).await.expect("app builds");
     (dir, router)
