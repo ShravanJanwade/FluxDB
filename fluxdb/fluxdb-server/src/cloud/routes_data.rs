@@ -52,6 +52,7 @@ pub fn routes() -> Router<CloudState> {
             "/api/cloud/projects/:project/buckets/:bucket/export",
             get(export),
         )
+        .route("/api/cloud/public/stats", get(public_stats))
         .route("/api/cloud/telemetry", get(telemetry))
         .route("/api/cloud/proxy", post(proxy))
         .route("/api/ingest/v1/whoami", get(whoami))
@@ -345,6 +346,55 @@ async fn export(
 /// the whole instance rather than one tenant.
 async fn telemetry(State(cloud): State<CloudState>, _actor: Actor) -> Json<Value> {
     Json(cloud.telemetry.telemetry())
+}
+
+/// Live figures for the marketing page. Deliberately limited to the public
+/// showcase project and to instance-wide request percentiles: no tenant's own
+/// data, names or counts appear here. Published so the landing page can quote
+/// measured numbers from the running instance instead of invented ones.
+async fn public_stats(State(cloud): State<CloudState>) -> Json<Value> {
+    let telemetry = cloud.telemetry.telemetry();
+    let samples: Vec<f64> = telemetry["samples"]
+        .as_array()
+        .map(|entries| {
+            let mut durations: Vec<f64> = entries
+                .iter()
+                .filter_map(|entry| entry["duration_ms"].as_f64())
+                .collect();
+            durations.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            durations
+        })
+        .unwrap_or_default();
+    let percentile = |fraction: f64| -> Option<f64> {
+        if samples.is_empty() {
+            return None;
+        }
+        let index = ((fraction * samples.len() as f64) as usize).min(samples.len() - 1);
+        Some((samples[index] * 100.0).round() / 100.0)
+    };
+    let demo_points = cloud.project_points(super::DEMO_PROJECT_ID);
+    let measurements = cloud
+        .store
+        .list_by_parent::<super::model::Bucket>(super::DEMO_PROJECT_ID)
+        .await
+        .map(|buckets| {
+            buckets
+                .iter()
+                .filter_map(|bucket| cloud.engine.get_database(&bucket.namespace))
+                .map(|db| db.stats().sstables)
+                .sum::<usize>()
+        })
+        .unwrap_or(0);
+    Json(json!({
+        "version": fluxdb_core::VERSION,
+        "uptime_seconds": telemetry["uptime_seconds"],
+        "demo_points": demo_points,
+        "demo_sstables": measurements,
+        "requests_recorded": samples.len(),
+        "query_p50_ms": percentile(0.5),
+        "query_p95_ms": percentile(0.95),
+        "query_p99_ms": percentile(0.99),
+    }))
 }
 
 // ============================================================================
