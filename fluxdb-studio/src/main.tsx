@@ -26,6 +26,7 @@ const Explorer = lazy(() => import("./app/Explorer"));
 const QueryWorkspace = lazy(() => import("./app/QueryWorkspace"));
 const Dashboards = lazy(() => import("./app/Dashboards"));
 const Monitors = lazy(() => import("./app/Monitors"));
+const Agent = lazy(() => import("./app/Agent"));
 const ApiKeys = lazy(() => import("./app/ApiKeys"));
 const Connections = lazy(() => import("./app/Connections"));
 const Health = lazy(() => import("./app/Health"));
@@ -165,6 +166,7 @@ function App() {
                     <Route path="query" element={<QueryWorkspace />} />
                     <Route path="dashboards" element={<Dashboards />} />
                     <Route path="monitors" element={<Monitors />} />
+                    <Route path="agent" element={<Agent />} />
                     <Route path="keys" element={<ApiKeys />} />
                     <Route path="connections" element={<Connections />} />
                     <Route path="health" element={<Health />} />

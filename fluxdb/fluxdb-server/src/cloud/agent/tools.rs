@@ -145,7 +145,7 @@ pub async fn dispatch(
                     })
                 })
                 .collect();
-            let detail = format!("{} bucket(s)", listed.len());
+            let detail = plural(listed.len(), "bucket");
             bounded(json!({"buckets": listed}), detail)
         }
 
@@ -227,7 +227,7 @@ pub async fn dispatch(
                 .count();
             bounded(
                 json!({"monitors": listed}),
-                format!("{} monitor(s), {alerting} alerting", listed.len()),
+                format!("{}, {alerting} alerting", plural(listed.len(), "monitor")),
             )
         }
 

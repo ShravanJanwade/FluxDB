@@ -58,8 +58,8 @@ describe("the console tour checklist", () => {
     const keys = container.querySelector(".m-keys");
 
     expect(keys).not.toBeNull();
-    expect([...keys!.querySelectorAll("kbd")].map((k) => k.textContent)).toEqual(
-      ["Ctrl", "⌘", "K"],
-    );
+    expect(
+      [...keys!.querySelectorAll("kbd")].map((k) => k.textContent),
+    ).toEqual(["Ctrl", "⌘", "K"]);
   });
 });

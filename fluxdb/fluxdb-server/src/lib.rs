@@ -77,6 +77,18 @@ impl ServerConfig {
                 );
             }
         }
+        // Point the agent at a Gemini-compatible gateway instead of Google
+        // directly. Useful behind an egress proxy, and it is how the agent is
+        // driven against a stand-in provider outside the test suite.
+        if let Ok(endpoint) = std::env::var("GEMINI_ENDPOINT") {
+            let endpoint = endpoint.trim().trim_end_matches('/').to_string();
+            if !endpoint.starts_with("http://") && !endpoint.starts_with("https://") {
+                anyhow::bail!(
+                    "GEMINI_ENDPOINT must be an absolute http(s) URL, for example https://generativelanguage.googleapis.com/v1beta/models"
+                );
+            }
+            config.gemini_endpoint = Some(endpoint);
+        }
         // An instance reachable from outside this machine must have a real
         // administration token; the alternative is publishing an open database.
         if !config.http_addr.ip().is_loopback()

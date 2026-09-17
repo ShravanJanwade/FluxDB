@@ -302,7 +302,8 @@ mail provider. Those are the first three things a real product would add.
 | `PUBLIC_BASE_URL` | derived | Absolute base URL, used for OAuth callbacks and cookie security |
 | `GITHUB_CLIENT_ID` / `_SECRET` | unset | Enables GitHub sign-in when both are present |
 | `FLUXDB_CORS_ORIGINS` | localhost 5173/4173 | Browser origins allowed to call the API |
-| `GEMINI_API_KEY` / `GEMINI_MODEL` | unset | Optional server-side key for the AI assistant |
+| `GEMINI_API_KEY` / `GEMINI_MODEL` | unset | Shared key for the AI agent. Served to registered accounts under an hourly cap, never to guests |
+| `GEMINI_ENDPOINT` | Google | Gemini-compatible gateway, for egress proxies |
 
 Never put a provider key in a `VITE_*` variable — those are compiled into the
 browser bundle.

@@ -1555,3 +1555,428 @@
   display: flex;
   gap: var(--space-2);
 }
+
+/* ---------- AI agent ---------- */
+
+.agent-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.agent-allowance {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.agent-thread {
+  display: grid;
+  gap: var(--space-4);
+  margin: var(--space-5) 0;
+}
+
+.agent-turn {
+  display: grid;
+}
+
+.agent-turn.is-user {
+  justify-items: end;
+}
+
+.agent-turn.is-user p {
+  max-width: min(46rem, 85%);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-text);
+  overflow-wrap: anywhere;
+}
+
+.agent-answer {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.agent-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.agent-answer-body {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.agent-answer-body > p,
+.agent-answer-body > ul,
+.agent-answer-body > ol {
+  margin: 0;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.agent-answer-body > ul,
+.agent-answer-body > ol {
+  padding-left: var(--space-5);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.agent-examples {
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  text-align: left;
+}
+
+.agent-examples button {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.agent-examples button:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* The tool timeline is collapsed by default: it is there to be checked, not
+   read every time. */
+.agent-timeline {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.agent-timeline-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-self: start;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.agent-timeline-toggle:hover {
+  color: var(--text);
+}
+
+.agent-timeline-failed {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--warning-bg);
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.agent-steps {
+  list-style: none;
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.agent-steps li {
+  display: grid;
+  grid-template-columns: 18px auto 1fr auto auto;
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  font-size: var(--text-xs);
+}
+
+.agent-steps li.is-failed {
+  background: var(--warning-bg);
+}
+
+.agent-step-icon {
+  color: var(--success);
+  transform: translateY(2px);
+}
+
+.agent-steps li.is-failed .agent-step-icon {
+  color: var(--warning);
+}
+
+.agent-step-detail {
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.agent-step-agent,
+.agent-step-time {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.agent-step-agent {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--surface-active);
+}
+
+/* A proposal is a change that has NOT happened. It must not look like a
+   receipt, so it is bordered and explicitly labelled. */
+.agent-proposals {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.agent-proposal {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+.agent-proposal.is-destructive {
+  border-left-color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.agent-proposal header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.agent-proposal.is-destructive header {
+  color: var(--danger);
+}
+
+.agent-proposal header code {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface-active);
+  font-size: 0.85em;
+}
+
+.agent-proposal-done {
+  margin-left: auto;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--success-bg);
+  color: var(--success);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.agent-proposal p {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.agent-proposal details summary {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.agent-proposal pre {
+  max-height: 16rem;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3);
+  overflow: auto;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  font-size: var(--text-xs);
+}
+
+.agent-proposal-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-xs);
+}
+
+.agent-composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-3);
+  align-items: end;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.agent-composer textarea {
+  resize: vertical;
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+
+.agent-footnote {
+  margin: var(--space-2) 0 var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.agent-list,
+.agent-runs {
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+}
+
+.agent-list li {
+  display: flex;
+  gap: var(--space-4);
+  align-items: start;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  flex-wrap: wrap;
+}
+
+.agent-list-main {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 16rem;
+  flex: 1;
+}
+
+.agent-list-main p {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.agent-list-main span {
+  font-size: var(--text-xs);
+}
+
+.agent-list-actions {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+}
+
+.agent-runs li {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.agent-run-head {
+  display: grid;
+  grid-template-columns: 18px auto auto 1fr auto;
+  gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.agent-run-head:hover {
+  background: var(--surface-hover);
+}
+
+.agent-run-kind {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.agent-run-question {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.agent-runs .agent-turn {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.spin {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation-duration: 3s;
+  }
+}
+
+@media (max-width: 720px) {
+  .agent-steps li {
+    grid-template-columns: 18px 1fr;
+  }
+
+  .agent-step-agent,
+  .agent-step-time {
+    display: none;
+  }
+
+  .agent-run-head {
+    grid-template-columns: 18px auto 1fr;
+  }
+
+  .agent-run-kind {
+    display: none;
+  }
+}

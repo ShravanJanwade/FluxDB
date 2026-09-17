@@ -235,12 +235,43 @@ The repository includes regression tests, an isolated authenticated end-to-end h
 
 ## Gemini agent
 
-The assistant is reachable wherever `/api/v1` is: a self-hosted server, or a
-deployment whose operator holds the administration token. It has not been
-extended to tenant-scoped buckets, so accounts on a hosted deployment do not see
-it. Making it tenant-aware means resolving a bucket id to a namespace before the
-tool loop runs and mapping proposed operations back to bucket names on the way
-out.
+There are two, sharing one provider transport (`src/gemini.rs`) and differing
+only in trust model.
+
+The **single-tenant assistant** (`/api/v1/assistant/*`) drives `/api/v1` with the
+administration token. It is the whole product for a self-hosted server, and the
+console offers it when a visitor has connected one.
+
+The **project agent** (`/api/cloud/projects/:project/agent/*`) is what a hosted
+account uses. It carries the caller's session rather than a token, resolves every
+target through `Cloud::bucket` against a project whose role was already checked,
+and accepts no engine database name at all: a caller names a bucket id and the
+mapping to storage happens behind the tenancy boundary. Tool declarations are
+filtered by role, so a viewer is never offered `propose_operation` and the model
+cannot put a card in front of someone who could not approve it. Destructive
+configuration additionally requires admin.
+
+Three entry points share one bounded loop. `chat` is a conversational turn.
+`insights` fans out a sub-investigation per bucket — up to four, concurrently,
+each pinned to its own bucket id so it cannot read a sibling — then asks the
+model to reconcile their notes into one report. Saved agents are standing
+instructions run on demand or by the maintenance sweep, with a 15-minute floor on
+their interval so one cannot be pointed at the provider in a tight loop.
+
+Cost is bounded per caller, not just per request. A guest is never served the
+shared server key: the hosted demo is a public link, and a provider key behind it
+would let anonymous visitors spend the operator's quota. Guests get the whole
+feature by supplying their own key, held in the browser tab. Registered accounts
+draw on the shared key under an hourly cap, and anyone spending their own key is
+not capped at all.
+
+Every run is persisted with its tool timeline — including refusals — and audited.
+Row values are labelled as data where they enter the model's context, and the
+system prompt states that a stored value which reads like an instruction is a
+string that reads like that; a test writes one and asserts nothing acts on it.
+Mutations are never executed by the agent: a proposal is validated, recorded, and
+applied only when the operator approves it through the ordinary REST route, where
+their permissions are checked again.
 
 The browser calls the authenticated `/api/v1/assistant/chat` route. Rust sends the bundled project instructions, selected database/page, and bounded conversation to Gemini's native generateContent function-calling API. The provider host is fixed; redirects and arbitrary provider URLs are disabled. A server `GEMINI_API_KEY` or per-request `x-gemini-api-key` supplies credentials. Secrets are never returned, persisted by the assistant, or logged. Browser session keys are memory-only; server keys are loaded from environment or a local .env at startup.
 
@@ -248,4 +279,6 @@ The tool loop preserves native model content and thought signatures between call
 
 At most four Gemini turns and eight tool calls run per request, with four simultaneous assistant requests, 45-second provider timeouts, and a 100-second overall deadline. Up to 16 messages / 48 KiB of input are accepted. Canceling generation stops the browser wait; server work can continue until its own deadline, and completed reads are not undone. No shell, filesystem, arbitrary network, or repository-edit tools are exposed. Replies are text, not executable HTML. Switching database clears conversation and proposals. Export downloads remain local; local result previews enter later model context only when row sharing is enabled.
 
-The prompt limits responses to FluxDB, but language-model compliance is probabilistic. Host-side scope checks, typed validation, read consent, and explicit mutation review enforce the execution boundaries. This is not multi-user authorization: a valid FluxDB token still grants server-wide administration.
+The prompt limits responses to FluxDB, but language-model compliance is probabilistic. Host-side scope checks, typed validation, read consent, and explicit mutation review enforce the execution boundaries — the prompt is guidance, the checks are the boundary.
+
+For the single-tenant assistant this is not multi-user authorization: a valid FluxDB token still grants server-wide administration. The project agent is the opposite case, and is where the authorization actually lives: it holds no token, and every tool call is subject to the caller's role in that project.

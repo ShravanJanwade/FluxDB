@@ -14,6 +14,8 @@
  */
 
 import type {
+  AgentConfig,
+  AgentRun,
   AlertEvent,
   ApiKey,
   AuditEntry,
@@ -34,6 +36,7 @@ import type {
   PublicStats,
   QueryResult,
   Role,
+  SavedAgent,
   Schema,
   Scope,
   Session,
@@ -70,6 +73,8 @@ type RequestOptions = {
   token?: string;
   text?: string;
   signal?: AbortSignal;
+  /** The visitor's own AI provider key. Held in tab memory, never stored. */
+  geminiKey?: string;
 };
 
 async function request<T>(
@@ -88,6 +93,9 @@ async function request<T>(
   }
   if (options.token) {
     headers.authorization = `Bearer ${options.token}`;
+  }
+  if (options.geminiKey) {
+    headers["x-gemini-api-key"] = options.geminiKey;
   }
 
   let response: Response;
@@ -216,6 +224,90 @@ export const api = {
     request<void>(`${base}/orgs/${orgId}/members/${accountId}`, {
       method: "DELETE",
     }),
+
+  // ---- agent ----------------------------------------------------------
+
+  agentConfig: () => request<AgentConfig>(`${base}/agent/config`),
+
+  agentModels: (geminiKey?: string) =>
+    request<{ models: { id: string; name: string }[] }>(
+      `${base}/agent/models`,
+      { geminiKey },
+    ),
+
+  /** One conversational turn. Runs tools server-side and returns the whole run. */
+  ask: (
+    projectId: string,
+    messages: { role: "user" | "assistant"; text: string }[],
+    options: { model?: string; page?: string; geminiKey?: string } = {},
+  ) =>
+    request<{ run: AgentRun; model: string }>(
+      `${base}/projects/${projectId}/agent/chat`,
+      {
+        method: "POST",
+        body: {
+          messages,
+          model: options.model ?? "",
+          page: options.page ?? "",
+        },
+        geminiKey: options.geminiKey,
+      },
+    ),
+
+  /** The one-click investigation: fans out per bucket, then reconciles. */
+  investigate: (projectId: string, geminiKey?: string) =>
+    request<{ run: AgentRun; model: string }>(
+      `${base}/projects/${projectId}/agent/insights`,
+      { method: "POST", geminiKey },
+    ),
+
+  savedAgents: (projectId: string) =>
+    request<{ agents: SavedAgent[] }>(
+      `${base}/projects/${projectId}/agent/saved`,
+    ),
+
+  createSavedAgent: (
+    projectId: string,
+    input: {
+      name: string;
+      instruction: string;
+      interval_minutes: number;
+      enabled: boolean;
+    },
+  ) =>
+    request<{ agent: SavedAgent }>(
+      `${base}/projects/${projectId}/agent/saved`,
+      { method: "POST", body: input },
+    ),
+
+  updateSavedAgent: (
+    projectId: string,
+    agentId: string,
+    input: {
+      name: string;
+      instruction: string;
+      interval_minutes: number;
+      enabled: boolean;
+    },
+  ) =>
+    request<{ agent: SavedAgent }>(
+      `${base}/projects/${projectId}/agent/saved/${agentId}`,
+      { method: "PATCH", body: input },
+    ),
+
+  deleteSavedAgent: (projectId: string, agentId: string) =>
+    request<void>(`${base}/projects/${projectId}/agent/saved/${agentId}`, {
+      method: "DELETE",
+    }),
+
+  runSavedAgent: (projectId: string, agentId: string, geminiKey?: string) =>
+    request<{ run: AgentRun; model: string }>(
+      `${base}/projects/${projectId}/agent/saved/${agentId}/run`,
+      { method: "POST", geminiKey },
+    ),
+
+  agentRuns: (projectId: string) =>
+    request<{ runs: AgentRun[] }>(`${base}/projects/${projectId}/agent/runs`),
 
   audit: (orgId: string) =>
     request<{ entries: AuditEntry[] }>(`${base}/orgs/${orgId}/audit`),

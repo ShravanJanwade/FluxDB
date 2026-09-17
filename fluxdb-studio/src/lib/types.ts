@@ -226,6 +226,97 @@ export type AuditEntry = {
 
 /** A field value as the JSON API represents it. Exact 64-bit integers arrive
  *  as `{ integer: "…" }` because a double cannot hold them. */
+// ---------------------------------------------------------------------------
+// Agent
+// ---------------------------------------------------------------------------
+
+export type AgentRunKind = "chat" | "insights" | "scheduled";
+export type AgentRunState = "ok" | "partial" | "failed";
+
+/** One tool call the agent made, in order, so a reader can audit its work. */
+export type AgentStep = {
+  tool: string;
+  detail: string;
+  ok: boolean;
+  duration_ms: number;
+  /** Set when the step ran inside a fanned-out sub-investigation. */
+  agent: string | null;
+};
+
+export type AgentFinding = {
+  title: string;
+  detail: string;
+  severity: Severity;
+  bucket_id: string | null;
+  evidence: string | null;
+};
+
+/** An operation the agent prepared. Never applied until the operator approves. */
+export type AgentProposal = {
+  kind:
+    | "write"
+    | "delete_points"
+    | "retention"
+    | "create_bucket"
+    | "drop_bucket"
+    | "flush"
+    | "compact";
+  bucket_id: string | null;
+  bucket_name: string | null;
+  payload: unknown;
+  explanation: string;
+  destructive: boolean;
+};
+
+export type AgentRun = {
+  id: string;
+  project_id: string;
+  agent_id: string | null;
+  kind: AgentRunKind;
+  question: string;
+  summary: string;
+  findings: AgentFinding[];
+  steps: AgentStep[];
+  proposals: AgentProposal[];
+  state: AgentRunState;
+  error: string | null;
+  duration_ms: number;
+  at: number;
+};
+
+export type SavedAgent = {
+  id: string;
+  project_id: string;
+  name: string;
+  instruction: string;
+  /** Zero means the agent runs only when asked. */
+  interval_minutes: number;
+  enabled: boolean;
+  created_by: string;
+  created_at: number;
+  last_run_at: number | null;
+  last_state: string | null;
+};
+
+export type AgentConfig = {
+  provider: string;
+  default_model: string;
+  /** Whether this caller may spend the deployment's shared key. */
+  server_key_available: boolean;
+  /** Whether the caller must supply their own key to use the agent at all. */
+  own_key_required: boolean;
+  own_key_reason: string;
+  limits: {
+    per_hour: number;
+    used_this_hour: number;
+    rounds: number;
+    queries: number;
+    max_rows: number;
+    proposals: number;
+  };
+  mutations: string;
+};
+
 export type FieldValue = number | string | boolean | { integer: string };
 
 export type Point = {

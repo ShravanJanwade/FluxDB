@@ -20,6 +20,7 @@ import {
   Activity,
   BarChart3,
   Bell,
+  Bot,
   BookOpen,
   Building2,
   ChevronRight,
@@ -143,6 +144,7 @@ export default function Shell() {
         { to: `${root}/query`, label: "Query workspace", Icon: Terminal },
         { to: `${root}/dashboards`, label: "Dashboards", Icon: BarChart3 },
         { to: `${root}/monitors`, label: "Monitors & alerts", Icon: Bell },
+        { to: `${root}/agent`, label: "AI agent", Icon: Bot },
       ],
     },
     {
