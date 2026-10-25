@@ -26,6 +26,9 @@ RUN apt-get update \
     && chown -R fluxdb:fluxdb /app
 COPY --from=engine /build/fluxdb/target/release/fluxdb /usr/local/bin/fluxdb
 COPY --from=console --chown=fluxdb:fluxdb /app/dist /app/web
+# Restores and archives the data directory when PERSIST_DIR is set, for hosts
+# that scale to zero; otherwise it just runs the server.
+COPY deploy/azure/persist-datadir.sh /usr/local/bin/fluxdb-persist
 USER fluxdb
 WORKDIR /app
 ENV FLUXDB_ADDR=0.0.0.0:8086 \
@@ -34,4 +37,4 @@ ENV FLUXDB_ADDR=0.0.0.0:8086 \
 EXPOSE 8086
 HEALTHCHECK --interval=15s --timeout=3s --start-period=20s \
     CMD curl --fail http://127.0.0.1:8086/health || exit 1
-ENTRYPOINT ["fluxdb"]
+ENTRYPOINT ["bash", "/usr/local/bin/fluxdb-persist", "fluxdb"]

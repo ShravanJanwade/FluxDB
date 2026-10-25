@@ -772,9 +772,10 @@ python scripts/restore.py snapshot.json --database restored \\
               deleted after 24 hours.
             </li>
             <li>
-              The hosted demo's time-series data lives on a container filesystem
-              that does not survive a redeploy. Accounts persist in managed
-              Postgres; the points do not.
+              The hosted demo scales to zero after 30 idle minutes and takes a
+              few seconds to wake. Its data directory is archived every five
+              minutes and on every stop, so a crash can lose the last few
+              minutes of writes.
             </li>
           </ul>
           <p>

@@ -1,0 +1,225 @@
+name: Deploy to Azure
+
+# Builds the image, publishes it to GitHub Container Registry and deploys
+# deploy/azure/main.bicep to Azure Container Apps. Until deploy/azure/setup.sh
+# has set the AZURE_* repository variables the job is skipped, not failed.
+# See docs/DEPLOY_AZURE.md.
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      warmup_hours:
+        description: Keep FluxDB running for this many hours from now, visitors or not. Blank keeps the current window.
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+# Deploys queue instead of overlapping, and one is never cancelled half-way
+# through updating the app.
+concurrency:
+  group: deploy-azure
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy
+    if: vars.AZURE_CLIENT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      APP_NAME: fluxdb
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Name the image
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The release build compiles the Rust workspace with LTO; the layer cache
+      # makes deploys that do not touch it much faster.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
+            ${{ steps.image.outputs.name }}:latest
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # GitHub Container Registry is free for public images, where Azure
+      # Container Registry would cost about $5 a month on its own.
+      - name: Check that Azure can pull the image
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+        run: |
+          path="${IMAGE#ghcr.io/}"
+          token="$(curl -fsS "https://ghcr.io/token?scope=repository:${path}:pull" | jq -r '.token // empty' || true)"
+          status="$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${token}" \
+            -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.docker.distribution.manifest.list.v2+json' \
+            "https://ghcr.io/v2/${path}/manifests/${GITHUB_SHA}")"
+          if [ "$status" != "200" ]; then
+            echo "::error title=The image is private::Azure pulls ${IMAGE} without credentials, so the package must be public. Open https://github.com/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${path##*/}/settings, choose Change visibility > Public, then re-run this workflow."
+            exit 1
+          fi
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy
+        id: deploy
+        env:
+          SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          ENVIRONMENT: ${{ vars.AZURE_CONTAINERAPPS_ENVIRONMENT }}
+          IMAGE: ${{ steps.image.outputs.name }}:${{ github.sha }}
+          IDLE_SHUTDOWN_SECONDS: ${{ vars.IDLE_SHUTDOWN_SECONDS }}
+          FIRST_WARMUP_HOURS: ${{ vars.FLUXDB_WARMUP_HOURS }}
+          REQUESTED_WARMUP_HOURS: ${{ inputs.warmup_hours }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          FLUXDB_TOKEN: ${{ secrets.FLUXDB_TOKEN }}
+          FLUXDB_SESSION_SECRET: ${{ secrets.FLUXDB_SESSION_SECRET }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GH_OAUTH_CLIENT_ID: ${{ secrets.GH_OAUTH_CLIENT_ID }}
+          GH_OAUTH_CLIENT_SECRET: ${{ secrets.GH_OAUTH_CLIENT_SECRET }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -euo pipefail
+          app_url="https://management.azure.com/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.App/containerApps/$APP_NAME"
+          api="api-version=2025-01-01"
+
+          # Generated secrets live in the container app itself: reused on every
+          # deploy, generated on the first. A repository secret of the same name
+          # overrides the stored value (for example to keep Render's token).
+          current() {
+            az rest --method post --url "$app_url/listSecrets?$api" \
+              --query "value[?name=='$1'].value | [0]" -o tsv 2>/dev/null || true
+          }
+          token="${FLUXDB_TOKEN:-$(current fluxdb-token)}"
+          token="${token:-$(openssl rand -hex 32)}"
+          session="${FLUXDB_SESSION_SECRET:-$(current session-secret)}"
+          session="${session:-$(openssl rand -hex 32)}"
+          echo "::add-mask::$token"
+          echo "::add-mask::$session"
+
+          # Warm-up: on the first deploy FluxDB stays on for FLUXDB_WARMUP_HOURS
+          # (48 by default) before it starts scaling to zero. The window is kept
+          # in tags on the app so later deploys do not restart it; running this
+          # workflow by hand with warmup_hours starts a new one.
+          if az rest --method get --url "$app_url?$api" -o none 2>/dev/null; then
+            tags="$(az rest --method get --url "$app_url?$api" --query tags -o json)"
+            from="$(jq -r '."warmup-from" // empty' <<< "$tags")"
+            until="$(jq -r '."warmup-until" // empty' <<< "$tags")"
+            hours="${REQUESTED_WARMUP_HOURS:-0}"
+          else
+            from=""
+            until=""
+            hours="${REQUESTED_WARMUP_HOURS:-${FIRST_WARMUP_HOURS:-48}}"
+          fi
+          if [ "$hours" -gt 0 ]; then
+            from="$(date -u +%Y-%m-%dT%H:%M:00Z)"
+            until="$(date -u -d "+$hours hours" +%Y-%m-%dT%H:%M:00Z)"
+          fi
+          cron_start=""
+          cron_end=""
+          if [ -n "$until" ] && [ "$(date -u +%s)" -lt "$(date -u -d "$until" +%s)" ]; then
+            # KEDA cron windows recur yearly; the rule is dropped by the first
+            # deploy after the window closes.
+            cron_start="$(date -u -d "$from" '+%-M %-H %-d %-m') *"
+            cron_end="$(date -u -d "$until" '+%-M %-H %-d %-m') *"
+            echo "Warm-up: FluxDB stays running until $until"
+          else
+            echo "No warm-up window: FluxDB scales to zero when idle"
+          fi
+
+          location="$(az resource show --resource-group "$RESOURCE_GROUP" --name "$ENVIRONMENT" \
+            --resource-type Microsoft.App/managedEnvironments --query location -o tsv)"
+          jq -n \
+            --arg image "$IMAGE" \
+            --arg environment "$ENVIRONMENT" \
+            --arg location "$location" \
+            --argjson idle "${IDLE_SHUTDOWN_SECONDS:-1800}" \
+            --arg cronStart "$cron_start" \
+            --arg cronEnd "$cron_end" \
+            --arg from "$from" \
+            --arg until "$until" \
+            --arg token "$token" \
+            --arg session "$session" \
+            --arg databaseUrl "$DATABASE_URL" \
+            --arg githubId "$GH_OAUTH_CLIENT_ID" \
+            --arg githubSecret "$GH_OAUTH_CLIENT_SECRET" \
+            --arg geminiKey "$GEMINI_API_KEY" \
+            --arg geminiModel "${GEMINI_MODEL:-gemini-2.5-flash}" \
+            '{
+              "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+              contentVersion: "1.0.0.0",
+              parameters: {
+                image: {value: $image},
+                environmentName: {value: $environment},
+                location: {value: $location},
+                idleShutdownSeconds: {value: $idle},
+                warmupCronStart: {value: $cronStart},
+                warmupCronEnd: {value: $cronEnd},
+                warmupFrom: {value: $from},
+                warmupUntil: {value: $until},
+                fluxdbToken: {value: $token},
+                sessionSecret: {value: $session},
+                databaseUrl: {value: $databaseUrl},
+                githubClientId: {value: $githubId},
+                githubClientSecret: {value: $githubSecret},
+                geminiApiKey: {value: $geminiKey},
+                geminiModel: {value: $geminiModel}
+              }
+            }' > "$RUNNER_TEMP/parameters.json"
+          url="$(az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$APP_NAME-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT" \
+            --template-file deploy/azure/main.bicep \
+            --parameters @"$RUNNER_TEMP/parameters.json" \
+            --query properties.outputs.url.value -o tsv)"
+          rm -f "$RUNNER_TEMP/parameters.json"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for the app to answer
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+        run: |
+          # The first request starts the app from zero if it is not running.
+          for _ in $(seq 1 30); do
+            if curl -fsS --max-time 60 "$URL/health" > /dev/null; then
+              # The control plane is up with its showcase, and the token API
+              # refuses anonymous callers.
+              curl -fsS "$URL/api/cloud/config" | grep -q demo_project_id
+              test "$(curl -s -o /dev/null -w '%{http_code}' "$URL/api/v1/databases")" = "401"
+              echo "Healthy: $URL"
+              printf '### Deployed\n%s\n' "$URL" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::$URL/health never answered. Read the logs with: az containerapp logs show -g $RESOURCE_GROUP -n $APP_NAME --tail 200"
+          exit 1

@@ -1,0 +1,4 @@
+# The hosted demo scales to zero when nobody is using it, and every crawler
+# visit would wake it for half an hour. The project page is the GitHub README.
+User-agent: *
+Disallow: /
