@@ -186,8 +186,34 @@ explain() {
   fi
 }
 
+# Provisioning state of the environment, or nothing when it does not exist.
+env_state() {
+  az containerapp env show --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" \
+    --query properties.provisioningState -o tsv 2>/dev/null || true
+}
+
+# A failed creation can leave the environment behind in a Failed state, which
+# blocks creating it again, here or in another region.
+remove_broken_env() {
+  local state
+  state="$(env_state)"
+  case "$state" in "" | Succeeded) return 0 ;; esac
+  info "removing the environment Azure left behind ($state; a minute or two)..."
+  az containerapp env delete --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" --yes -o none 2>/dev/null || true
+}
+
 step "Region, resource group and Container Apps environment"
-if az containerapp env show --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" -o none 2>/dev/null; then
+state="$(env_state)"
+case "$state" in
+  "" | Succeeded) ;;
+  Failed | Canceled | UpgradeFailed)
+    info "environment $ENVIRONMENT exists but is $state"
+    remove_broken_env
+    state=""
+    ;;
+  *) fail "Environment $ENVIRONMENT is still being set up or removed ($state). Wait a few minutes, then re-run." ;;
+esac
+if [ "$state" = "Succeeded" ]; then
   LOCATION="$(az containerapp env show --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" --query location -o tsv | tr -d ' ' | tr '[:upper:]' '[:lower:]')"
   info "reusing environment $ENVIRONMENT in $LOCATION"
 else
@@ -223,11 +249,16 @@ else
       created="$region"
       break
     fi
-    if refused; then info "$region refused: $(reason)"; continue; fi
-    explain
-    fail "Could not create the Container Apps environment."
+    # A policy refusal would repeat in every region, so it stops here. Other
+    # failures, such as a platform error in one region, try the next one.
+    if ! refused && grep -qi 'RequestDisallowedByPolicy' "$errors"; then
+      explain
+      fail "Could not create the Container Apps environment."
+    fi
+    info "$region did not work: $(reason)"
+    remove_broken_env
   done
-  [ -n "$created" ] || fail "Every region tried was refused ($candidates); the reasons are above. Find your allowed regions under Azure Portal > Policy > Assignments > 'Allowed resource deployment regions', then re-run with LOCATION=<region>."
+  [ -n "$created" ] || fail "No region worked ($candidates); Azure's reasons are above. If they name your region list, find it under Azure Portal > Policy > Assignments > 'Allowed resource deployment regions' and re-run with LOCATION=<region>; otherwise wait a while and re-run."
   LOCATION="$created"
   info "environment $ENVIRONMENT is ready in $LOCATION"
 fi

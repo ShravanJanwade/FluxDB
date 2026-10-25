@@ -217,6 +217,10 @@ organization wants tags the script didn't set or different values. Set the
 values with `TAG_OWNER`, `TAG_COST_CENTER` or `TAG_IAC_MANAGED`, add missing tags
 with `EXTRA_TAGS='Name=value'`, and re-run.
 
+**The environment fails in one region with an Azure-side error** (for example
+"There is not enough space on the disk"). The script removes the half-created
+environment and tries the next allowed region on its own; re-running is safe.
+
 **`RequestDisallowedByAzure` during setup.** Azure for Students only allows a
 few regions. The script reads the allowed list and tries them in order; if it
 still fails, find the list under **Policy → Assignments → Allowed resource
