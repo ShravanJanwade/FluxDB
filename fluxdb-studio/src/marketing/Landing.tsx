@@ -1116,8 +1116,8 @@ function Limits() {
       "Request history is the last 2,000 application requests, held in memory and reset on restart. It measures server processing time, not network latency or disk IOPS.",
     ],
     [
-      "Hosted demo is ephemeral",
-      "The free deployment's time-series data lives on a container filesystem that does not survive a redeploy. Accounts persist in managed Postgres; the points do not.",
+      "Hosted demo sleeps",
+      "The public deployment scales to zero after 30 idle minutes, so the first visit after a quiet spell waits a few seconds for it to start. Its data is archived every five minutes and on every stop; a crash can lose the last few minutes of writes.",
     ],
     [
       "No email delivery",

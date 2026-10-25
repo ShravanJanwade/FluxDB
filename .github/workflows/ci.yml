@@ -87,7 +87,58 @@ jobs:
           # And the token API must not be reachable without the token.
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' \
             http://127.0.0.1:8086/api/v1/databases)" = "401"
+      # Hosts that scale to zero set PERSIST_DIR: data written before a stop has
+      # to be there after the next start, and the showcase must be re-seeded
+      # rather than restored so its incident stays recent.
+      - name: Archive the data directory on stop and restore it on the next start
+        run: |
+          persist="$RUNNER_TEMP/persist"
+          mkdir -p "$persist" && chmod 777 "$persist"
+          token="$(openssl rand -hex 32)"
+          boot() {
+            docker run --detach --name fluxdb-persist \
+              --env FLUXDB_TOKEN="$token" \
+              --env FLUXDB_SESSION_SECRET="$(openssl rand -hex 32)" \
+              --env PERSIST_DIR=/persist --volume "$persist:/persist" \
+              --publish 8087:8086 fluxdb:ci
+            for _ in $(seq 1 60); do
+              if curl --silent --fail http://127.0.0.1:8087/health > /dev/null; then return 0; fi
+              sleep 2
+            done
+            docker logs fluxdb-persist
+            return 1
+          }
+          boot
+          python3 - "$token" <<'PY'
+          import sys
+          sys.path.insert(0, "sdk/python")
+          from fluxdb import FluxDBClient
+          client = FluxDBClient("http://127.0.0.1:8087", sys.argv[1])
+          client.create_database("persisted")
+          point = {"measurement": "cpu", "tags": {"host": "ci"}, "timestamp": "1700000000000000000", "fields": {"usage": 42.5}}
+          assert client.write("persisted", [point])["written"] == 1
+          PY
+          docker stop --time 90 fluxdb-persist
+          docker logs fluxdb-persist 2>&1 | grep '\[persist\] saved'
+          docker rm fluxdb-persist
+          tar -tzf "$persist/fluxdb-data.tar.gz" | grep -q persisted
+          if tar -tzf "$persist/fluxdb-data.tar.gz" | grep -q tdemofluxdb99_production; then
+            echo "The showcase was archived"; exit 1
+          fi
+          boot
+          docker logs fluxdb-persist 2>&1 | grep '\[persist\] restored'
+          python3 - "$token" <<'PY'
+          import sys
+          sys.path.insert(0, "sdk/python")
+          from fluxdb import FluxDBClient
+          client = FluxDBClient("http://127.0.0.1:8087", sys.argv[1])
+          points = client.read("persisted")["points"]
+          assert len(points) == 1 and points[0]["fields"]["usage"] == 42.5, points
+          PY
+          curl --silent --fail http://127.0.0.1:8087/api/cloud/config | grep -q demo_project_id
       - if: always()
         run: docker logs fluxdb-ci || true
       - if: always()
-        run: docker rm --force fluxdb-ci || true
+        run: docker logs fluxdb-persist || true
+      - if: always()
+        run: docker rm --force fluxdb-ci fluxdb-persist || true

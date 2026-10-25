@@ -11,6 +11,10 @@ Three paths, in order of how quickly they get you a public URL.
 2. [Docker anywhere](#docker-anywhere)
 3. [Your own VM with HTTPS](#your-own-vm)
 
+The public demo itself runs on Azure Container Apps, scaling to zero when idle
+and archiving its data directory to Azure Files. That path has its own guide:
+[DEPLOY_AZURE.md](DEPLOY_AZURE.md).
+
 ---
 
 ## What every deployment needs

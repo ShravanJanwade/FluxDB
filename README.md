@@ -146,7 +146,9 @@ FLUXDB_SESSION_SECRET=$(python -c "import secrets; print(secrets.token_hex(32))"
 
 One container. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the full guide,
 including the free Render + managed Postgres path and the certificate setup for
-your own VM.
+your own VM. The public demo runs on Azure Container Apps and scales to zero
+when idle; [docs/DEPLOY_AZURE.md](docs/DEPLOY_AZURE.md) is that setup, end to
+end.
 
 ```sh
 cp .env.example .env     # then replace both secrets
@@ -392,9 +394,10 @@ definition is not evidence of a successful hosted run.
 - **Bounded telemetry.** Request history is the last 2,000 application requests,
   in memory, reset on restart. It measures server processing time only — not
   network latency, CPU utilisation or disk IOPS.
-- **Ephemeral hosted data.** On a free hosted plan the time-series data lives on
-  a container filesystem that does not survive a redeploy. Accounts persist in
-  managed Postgres; the points do not.
+- **A sleeping hosted demo.** The public deployment scales to zero after 30 idle
+  minutes and takes a few seconds to wake on the next visit. Its data directory
+  is archived every five minutes and on every stop, so points survive sleeps
+  and redeploys, but a crash can lose the last few minutes of writes.
 
 Tests reduce regressions; they cannot establish production readiness for every
 workload. Validate capacity, backups, restore, fault behaviour and HTTPS
