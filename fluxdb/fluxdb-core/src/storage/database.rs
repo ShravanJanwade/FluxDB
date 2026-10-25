@@ -540,10 +540,7 @@ impl Database {
                     if id < minimum {
                         continue;
                     }
-                    match SSTableReader::open(path.clone()) {
-                        Ok(reader) => sstables.push(reader),
-                        Err(e) => return Err(e),
-                    }
+                    sstables.push(SSTableReader::open(path.clone())?);
                 }
             }
         }
