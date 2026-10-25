@@ -203,7 +203,24 @@ remove_broken_env() {
 }
 
 step "Region, resource group and Container Apps environment"
+# The CLI now creates "express" environments unless told otherwise, and those
+# cannot mount an Azure Files share or run the cron scale rule FluxDB's warm-up
+# uses. Ask for a standard (workload profiles) environment by name.
+env_mode_args=()
+if az containerapp env create --help 2>/dev/null | grep -q -- '--environment-mode'; then
+  env_mode_args=(--environment-mode WorkloadProfiles)
+fi
 state="$(env_state)"
+if [ "$state" = "Succeeded" ] &&
+  [ "$(az containerapp env show --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" --query properties.environmentMode -o tsv 2>/dev/null)" = "Express" ]; then
+  apps="$(az containerapp list --resource-group "$RESOURCE_GROUP" --environment "$ENVIRONMENT" --query 'length(@)' -o tsv 2>/dev/null || echo 0)"
+  [ "$apps" = "0" ] ||
+    fail "Environment $ENVIRONMENT is an express environment, which cannot mount the file share, and it already has apps. Delete them, or the environment, and re-run."
+  info "environment $ENVIRONMENT is an express environment, which cannot mount the file share"
+  info "recreating it as a standard environment (a minute or two to remove it)..."
+  az containerapp env delete --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" --yes -o none
+  state=""
+fi
 case "$state" in
   "" | Succeeded) ;;
   Failed | Canceled | UpgradeFailed)
@@ -245,7 +262,8 @@ else
     fi
     info "creating environment $ENVIRONMENT in $region (about 3 minutes)..."
     if az containerapp env create --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" \
-      --location "$region" --logs-destination none --tags "${tags[@]}" -o none 2>"$errors"; then
+      --location "$region" "${env_mode_args[@]}" --logs-destination none --tags "${tags[@]}" \
+      -o none 2>"$errors"; then
       created="$region"
       break
     fi
@@ -260,6 +278,9 @@ else
   done
   [ -n "$created" ] || fail "No region worked ($candidates); Azure's reasons are above. If they name your region list, find it under Azure Portal > Policy > Assignments > 'Allowed resource deployment regions' and re-run with LOCATION=<region>; otherwise wait a while and re-run."
   LOCATION="$created"
+  if [ "$(az containerapp env show --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" --query properties.environmentMode -o tsv 2>/dev/null)" = "Express" ]; then
+    fail "Azure created an express environment, which cannot mount the file share. Update the CLI (az upgrade, then az extension add --name containerapp --upgrade) and re-run; the script replaces it."
+  fi
   info "environment $ENVIRONMENT is ready in $LOCATION"
 fi
 DOMAIN="$(az containerapp env show --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" --query properties.defaultDomain -o tsv)"
