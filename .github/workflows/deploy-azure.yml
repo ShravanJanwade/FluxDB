@@ -97,6 +97,7 @@ jobs:
           ENVIRONMENT: ${{ vars.AZURE_CONTAINERAPPS_ENVIRONMENT }}
           IMAGE: ${{ steps.image.outputs.name }}:${{ github.sha }}
           IDLE_SHUTDOWN_SECONDS: ${{ vars.IDLE_SHUTDOWN_SECONDS }}
+          AZURE_TAGS: ${{ vars.AZURE_TAGS }}
           FIRST_WARMUP_HOURS: ${{ vars.FLUXDB_WARMUP_HOURS }}
           REQUESTED_WARMUP_HOURS: ${{ inputs.warmup_hours }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
@@ -157,11 +158,15 @@ jobs:
 
           location="$(az resource show --resource-group "$RESOURCE_GROUP" --name "$ENVIRONMENT" \
             --resource-type Microsoft.App/managedEnvironments --query location -o tsv)"
+          # Tags the subscription's policies require, as setup.sh recorded them.
+          required_tags="${AZURE_TAGS:-}"
+          if [ -z "$required_tags" ]; then required_tags='{}'; fi
           jq -n \
             --arg image "$IMAGE" \
             --arg environment "$ENVIRONMENT" \
             --arg location "$location" \
             --argjson idle "${IDLE_SHUTDOWN_SECONDS:-1800}" \
+            --argjson tags "$required_tags" \
             --arg cronStart "$cron_start" \
             --arg cronEnd "$cron_end" \
             --arg from "$from" \
@@ -181,6 +186,7 @@ jobs:
                 environmentName: {value: $environment},
                 location: {value: $location},
                 idleShutdownSeconds: {value: $idle},
+                tags: {value: $tags},
                 warmupCronStart: {value: $cronStart},
                 warmupCronEnd: {value: $cronEnd},
                 warmupFrom: {value: $from},
