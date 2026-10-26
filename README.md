@@ -9,6 +9,12 @@ dashboards, threshold monitors and an audit trail.
 It runs as **one process on one port**. The same binary serves the storage
 engine, the control plane, the token API and the browser console.
 
+> **[Open the live demo →](https://fluxdb.icygrass-95174406.westus2.azurecontainerapps.io)**
+> Click **Explore the demo**; no account needed. The demo sleeps when nobody is
+> using it, so the first load after a quiet spell takes a few seconds.
+
+Or run it yourself:
+
 ```sh
 git clone https://github.com/ShravanJanwade/FluxDB.git
 cd FluxDB
