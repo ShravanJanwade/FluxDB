@@ -19,6 +19,9 @@
 #     no password or secret is ever stored in GitHub)
 #   - a monthly budget that emails you before credit is wasted
 #
+# Everything it creates is tagged Owner, Cost Center and IaC
+# managed, which Northeastern's Azure tenant requires.
+#
 # and then sets the repository variables .github/workflows/
 # deploy-azure.yml reads. CodeLens ships the same script: both
 # projects share everything above except their app and file
@@ -41,6 +44,15 @@ LOCATION="${LOCATION:-}"
 BUDGET_NAME="${BUDGET_NAME:-portfolio-monthly}"
 BUDGET_AMOUNT="${BUDGET_AMOUNT:-8}"
 BUDGET_EMAIL="${BUDGET_EMAIL:-}"
+# Tags on everything this script creates. Northeastern's Azure tenant refuses a
+# resource group without Owner, Cost Center and IaC managed; its rule only checks
+# that Cost Center exists, so it defaults to naming what pays: the student credit.
+# Owner defaults to your Azure sign-in, IaC managed to this GitHub repository.
+TAG_OWNER="${TAG_OWNER:-}"
+TAG_COST_CENTER="${TAG_COST_CENTER:-Azure for Students}"
+TAG_IAC_MANAGED="${TAG_IAC_MANAGED:-}"
+# Any further tags a policy demands, as "Name=value" pairs separated by ";".
+EXTRA_TAGS="${EXTRA_TAGS:-}"
 # Closest to the US east coast first. Azure for Students only allows a few
 # regions per subscription; the allowed ones are tried in this order.
 PREFERRED_LOCATIONS="${PREFERRED_LOCATIONS:-eastus eastus2 centralus northcentralus southcentralus westus2 westus3 canadacentral}"
@@ -58,6 +70,18 @@ step() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 info() { printf '    %s\n' "$*"; }
 warn() { printf '\033[33m    warning: %s\033[0m\n' "$*" >&2; }
 fail() { printf '\033[31merror: %s\033[0m\n' "$*" >&2; exit 1; }
+
+# The signed-in account's email address, or nothing for a guest account.
+account_email() {
+  local email
+  email="$(az account show --query user.name -o tsv)"
+  case "$email" in *'#EXT#'* | *' '*) email="" ;; *@*.*) ;; *) email="" ;; esac
+  if [ -z "$email" ]; then
+    email="$(az ad signed-in-user show --query mail -o tsv 2>/dev/null || true)"
+    case "$email" in *@*.*) ;; *) email="" ;; esac
+  fi
+  printf '%s' "$email"
+}
 
 # ---- which GitHub repository -------------------------------------------------
 
@@ -88,6 +112,21 @@ TENANT_ID="$(az account show --query tenantId -o tsv)"
 info "$(az account show --query name -o tsv) ($SUBSCRIPTION_ID)"
 info "Deploying $GITHUB_REPO ($GITHUB_BRANCH) as the '$APP_NAME' container app."
 info "Wrong subscription? az account set --subscription <name-or-id>, then re-run."
+TAG_OWNER="${TAG_OWNER:-$(account_email)}"
+TAG_IAC_MANAGED="${TAG_IAC_MANAGED:-$GITHUB_REPO}"
+[ -n "$TAG_OWNER" ] || fail "Could not find your email address for the Owner tag. Re-run with TAG_OWNER=you@example.edu."
+tags=("Owner=$TAG_OWNER" "Cost Center=$TAG_COST_CENTER" "IaC managed=$TAG_IAC_MANAGED")
+IFS=';' read -r -a extra_tags <<< "$EXTRA_TAGS"
+for pair in "${extra_tags[@]}"; do
+  case "$pair" in ?*=*) tags+=("$pair") ;; '') ;; *) fail "EXTRA_TAGS entries look like Name=value; got '$pair'." ;; esac
+done
+info "Tags: $(printf '%s, ' "${tags[@]}" | sed 's/, $//')"
+json_string() { printf '"%s"' "$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')"; }
+TAGS_JSON=""
+for pair in "${tags[@]}"; do
+  TAGS_JSON="$TAGS_JSON,$(json_string "${pair%%=*}"):$(json_string "${pair#*=}")"
+done
+TAGS_JSON="{${TAGS_JSON#,}}"
 
 step "Azure CLI extension"
 az extension add --name containerapp --upgrade --only-show-errors -o none
@@ -131,11 +170,79 @@ print("\n".join(sorted(found)))
 ' || true
 }
 
-# Try regions in order, moving on only when a policy or capacity check refuses one.
-refused() { grep -qiE 'RequestDisallowedByAzure|disallowed by|LocationNotAvailableForResourceType|not available|NoRegisteredProviderFound|SkuNotAvailable' "$errors"; }
+# Azure's own words for the last failure, shortened for one line. Deployment
+# errors nest the useful message, so take the innermost one when there is one.
+reason() {
+  local detail
+  detail="$(grep -o '"message": *"[^"]*"' "$errors" | tail -n 1 | sed 's/^"message": *"//; s/"$//')"
+  if [ -n "$detail" ]; then
+    printf '%s\n' "$detail" | cut -c1-300
+  else
+    grep -v '^WARNING' "$errors" | grep -m 1 . | cut -c1-300
+  fi
+}
+
+# Regions are tried in order, moving on only when a region list, capacity or
+# availability check refuses one. Anything else, such as a policy demanding a
+# tag, would fail the same way everywhere, so it stops with Azure's message.
+refused() {
+  grep -qiE 'RequestDisallowedByAzure|LocationNotAvailableForResourceType|is not available for resource|NoRegisteredProviderFound|not allowed to create environments in region|CapacityHeavyUsage|SkuNotAvailable' "$errors" && return 0
+  grep -qi 'RequestDisallowedByPolicy' "$errors" && grep -qiE 'location|region' "$errors" && ! grep -qi 'tag' "$errors"
+}
+
+# Print Azure's error, with a hint when an organization policy is the cause.
+explain() {
+  cat "$errors" >&2
+  if grep -qi 'RequestDisallowedByPolicy' "$errors" && grep -qi 'tag' "$errors"; then
+    warn "an Azure Policy in your organization wants a tag this script did not set, or a different value."
+    warn "set the value with the TAG_* settings at the top of this script, or add tags, for example:"
+    warn "  TAG_COST_CENTER=12345 bash $0"
+    warn "  EXTRA_TAGS='Department=Computer Science' bash $0"
+  fi
+}
+
+# Provisioning state of the environment, or nothing when it does not exist.
+env_state() {
+  az containerapp env show --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" \
+    --query properties.provisioningState -o tsv 2>/dev/null || true
+}
+
+# A failed creation can leave the environment behind in a Failed state, which
+# blocks creating it again, here or in another region.
+remove_broken_env() {
+  local state
+  state="$(env_state)"
+  case "$state" in "" | Succeeded) return 0 ;; esac
+  info "removing the environment Azure left behind ($state; a minute or two)..."
+  az containerapp env delete --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" --yes -o none 2>/dev/null || true
+}
 
 step "Region, resource group and Container Apps environment"
-if az containerapp env show --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" -o none 2>/dev/null; then
+# The CLI now creates "express" environments by default, and those cannot mount
+# an Azure Files share or run the cron scale rule FluxDB's warm-up uses. So the
+# environment comes from environment.bicep, which asks for a standard one by
+# name, and an empty express one left by an earlier run is replaced.
+state="$(env_state)"
+if [ "$state" = "Succeeded" ] &&
+  [ "$(az containerapp env show --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" --query properties.environmentMode -o tsv 2>/dev/null)" = "Express" ]; then
+  apps="$(az containerapp list --resource-group "$RESOURCE_GROUP" --environment "$ENVIRONMENT" --query 'length(@)' -o tsv 2>/dev/null || echo 0)"
+  [ "$apps" = "0" ] ||
+    fail "Environment $ENVIRONMENT is an express environment, which cannot mount the file share, and it already has apps. Delete them, or the environment, and re-run."
+  info "environment $ENVIRONMENT is an express environment, which cannot mount the file share"
+  info "recreating it as a standard environment (a minute or two to remove it)..."
+  az containerapp env delete --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" --yes -o none
+  state=""
+fi
+case "$state" in
+  "" | Succeeded) ;;
+  Failed | Canceled | UpgradeFailed)
+    info "environment $ENVIRONMENT exists but is $state"
+    remove_broken_env
+    state=""
+    ;;
+  *) fail "Environment $ENVIRONMENT is still being set up or removed ($state). Wait a few minutes, then re-run." ;;
+esac
+if [ "$state" = "Succeeded" ]; then
   LOCATION="$(az containerapp env show --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" --query location -o tsv | tr -d ' ' | tr '[:upper:]' '[:lower:]')"
   info "reusing environment $ENVIRONMENT in $LOCATION"
 else
@@ -159,25 +266,35 @@ else
   created=""
   for region in $candidates; do
     if ! az group show --name "$RESOURCE_GROUP" -o none 2>/dev/null; then
-      if ! az group create --name "$RESOURCE_GROUP" --location "$region" -o none 2>"$errors"; then
-        if refused; then info "$region refused; trying the next region"; continue; fi
-        cat "$errors" >&2
+      if ! az group create --name "$RESOURCE_GROUP" --location "$region" --tags "${tags[@]}" -o none 2>"$errors"; then
+        if refused; then info "$region refused: $(reason)"; continue; fi
+        explain
         fail "Could not create resource group $RESOURCE_GROUP."
       fi
     fi
     info "creating environment $ENVIRONMENT in $region (about 3 minutes)..."
-    if az containerapp env create --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" \
-      --location "$region" --logs-destination none -o none 2>"$errors"; then
+    if az deployment group create --resource-group "$RESOURCE_GROUP" --name "environment-$(date +%s)" \
+      --template-file "$repo_root/deploy/azure/environment.bicep" \
+      --parameters name="$ENVIRONMENT" location="$region" tags="$TAGS_JSON" -o none 2>"$errors"; then
       created="$region"
       break
     fi
-    if refused; then info "$region refused; trying the next region"; continue; fi
-    cat "$errors" >&2
-    fail "Could not create the Container Apps environment."
+    # A policy refusal would repeat in every region, so it stops here. Other
+    # failures, such as a platform error in one region, try the next one.
+    if ! refused && grep -qi 'RequestDisallowedByPolicy' "$errors"; then
+      explain
+      fail "Could not create the Container Apps environment."
+    fi
+    info "$region did not work: $(reason)"
+    remove_broken_env
   done
-  [ -n "$created" ] || fail "Every region tried was refused ($candidates). Find your allowed regions under Azure Portal > Policy > Assignments > 'Allowed resource deployment regions', then re-run with LOCATION=<region>."
+  [ -n "$created" ] || fail "No region worked ($candidates); Azure's reasons are above. If they name your region list, find it under Azure Portal > Policy > Assignments > 'Allowed resource deployment regions' and re-run with LOCATION=<region>; otherwise wait a while and re-run."
   LOCATION="$created"
-  info "environment $ENVIRONMENT is ready in $LOCATION"
+  mode="$(az containerapp env show --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" --query properties.environmentMode -o tsv 2>/dev/null || true)"
+  if [ "$mode" = "Express" ]; then
+    fail "Azure made $ENVIRONMENT an express environment even though environment.bicep asks for WorkloadProfiles, so this subscription may only offer express environments, which cannot hold the file share. Stopping before anything else is created."
+  fi
+  info "environment $ENVIRONMENT is ready in $LOCATION (${mode:-standard})"
 fi
 DOMAIN="$(az containerapp env show --name "$ENVIRONMENT" --resource-group "$RESOURCE_GROUP" --query properties.defaultDomain -o tsv)"
 
@@ -187,9 +304,13 @@ if [ -z "$storage_account" ]; then
   # Globally unique, but stable for this subscription so re-runs find it.
   storage_account="stportfolio$(printf '%s' "$SUBSCRIPTION_ID" | sha256sum | cut -c1-8)"
   info "creating storage account $storage_account..."
-  az storage account create --name "$storage_account" --resource-group "$RESOURCE_GROUP" \
+  if ! az storage account create --name "$storage_account" --resource-group "$RESOURCE_GROUP" \
     --location "$LOCATION" --sku Standard_LRS --kind StorageV2 --min-tls-version TLS1_2 \
-    --https-only true --allow-blob-public-access false --tags portfolio=shared -o none
+    --https-only true --allow-blob-public-access false --tags portfolio=shared "${tags[@]}" \
+    -o none 2>"$errors"; then
+    explain
+    fail "Could not create storage account $storage_account."
+  fi
 fi
 info "storage account $storage_account"
 if ! az storage share-rm show --resource-group "$RESOURCE_GROUP" --storage-account "$storage_account" \
@@ -212,7 +333,23 @@ info "environment storage $SHARE_NAME is linked to $ENVIRONMENT"
 
 step "Identity for GitHub Actions"
 if ! az identity show --name "$IDENTITY" --resource-group "$RESOURCE_GROUP" -o none 2>/dev/null; then
-  az identity create --name "$IDENTITY" --resource-group "$RESOURCE_GROUP" --location "$LOCATION" -o none
+  # Unlike group and storage commands, az identity reads --tags as shorthand
+  # syntax, where "Cost Center=..." does not parse. JSON is valid shorthand;
+  # the quoted form is the fallback for a CLI that rejects it.
+  shorthand_tags="$(for pair in "${tags[@]}"; do printf ",'%s':'%s'" "${pair%%=*}" "${pair#*=}"; done)"
+  identity_created=0
+  for tag_value in "$TAGS_JSON" "{${shorthand_tags#,}}"; do
+    if az identity create --name "$IDENTITY" --resource-group "$RESOURCE_GROUP" --location "$LOCATION" \
+      --tags "$tag_value" -o none 2>"$errors"; then
+      identity_created=1
+      break
+    fi
+    grep -q "Failed to parse '--tags'" "$errors" || break
+  done
+  if [ "$identity_created" -ne 1 ]; then
+    explain
+    fail "Could not create managed identity $IDENTITY."
+  fi
 fi
 CLIENT_ID="$(az identity show --name "$IDENTITY" --resource-group "$RESOURCE_GROUP" --query clientId -o tsv)"
 PRINCIPAL_ID="$(az identity show --name "$IDENTITY" --resource-group "$RESOURCE_GROUP" --query principalId -o tsv)"
@@ -245,10 +382,7 @@ budget_url="https://management.azure.com/subscriptions/$SUBSCRIPTION_ID/provider
 if az rest --method get --url "$budget_url" -o none 2>/dev/null; then
   info "budget $BUDGET_NAME already exists"
 else
-  email="$BUDGET_EMAIL"
-  [ -n "$email" ] || email="$(az ad signed-in-user show --query mail -o tsv 2>/dev/null || true)"
-  if [ -z "$email" ] || [ "$email" = "None" ]; then email="$(az account show --query user.name -o tsv)"; fi
-  case "$email" in *'#EXT#'* | *' '*) email="" ;; *@*.*) ;; *) email="" ;; esac
+  email="${BUDGET_EMAIL:-$(account_email)}"
   if [ -z "$email" ]; then
     warn "skipped: no email address found. Re-run with BUDGET_EMAIL=you@example.com to add one."
   else
@@ -278,12 +412,15 @@ JSON
 fi
 
 step "GitHub repository variables"
+# The deploy workflow puts the same tags on the container app.
+AZURE_TAGS="$TAGS_JSON"
 variables=(
   "AZURE_CLIENT_ID=$CLIENT_ID"
   "AZURE_TENANT_ID=$TENANT_ID"
   "AZURE_SUBSCRIPTION_ID=$SUBSCRIPTION_ID"
   "AZURE_RESOURCE_GROUP=$RESOURCE_GROUP"
   "AZURE_CONTAINERAPPS_ENVIRONMENT=$ENVIRONMENT"
+  "AZURE_TAGS=$AZURE_TAGS"
 )
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
   for pair in "${variables[@]}"; do

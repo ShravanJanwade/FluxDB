@@ -28,6 +28,9 @@ param storageName string = 'fluxdb-data'
 @minValue(300)
 param idleShutdownSeconds int = 1800
 
+@description('Tags the subscription\'s policies require, set by setup.sh as the AZURE_TAGS repository variable.')
+param tags object = {}
+
 @description('Warm-up window, as UTC cron expressions "minute hour day month *". Empty once it has passed.')
 param warmupCronStart string = ''
 param warmupCronEnd string = ''
@@ -120,11 +123,14 @@ resource app 'Microsoft.App/containerApps@2025-01-01' = {
   name: appName
   location: location
   tags: union(
+    tags,
     { project: 'fluxdb' },
     empty(warmupUntil) ? {} : { 'warmup-from': warmupFrom, 'warmup-until': warmupUntil }
   )
   properties: {
     environmentId: environment.id
+    // The environment's only profile: per-second billing, scale to zero.
+    workloadProfileName: 'Consumption'
     configuration: {
       activeRevisionsMode: 'Single'
       maxInactiveRevisions: 3
