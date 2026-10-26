@@ -333,8 +333,20 @@ info "environment storage $SHARE_NAME is linked to $ENVIRONMENT"
 
 step "Identity for GitHub Actions"
 if ! az identity show --name "$IDENTITY" --resource-group "$RESOURCE_GROUP" -o none 2>/dev/null; then
-  if ! az identity create --name "$IDENTITY" --resource-group "$RESOURCE_GROUP" --location "$LOCATION" \
-    --tags "${tags[@]}" -o none 2>"$errors"; then
+  # Unlike group and storage commands, az identity reads --tags as shorthand
+  # syntax, where "Cost Center=..." does not parse. JSON is valid shorthand;
+  # the quoted form is the fallback for a CLI that rejects it.
+  shorthand_tags="$(for pair in "${tags[@]}"; do printf ",'%s':'%s'" "${pair%%=*}" "${pair#*=}"; done)"
+  identity_created=0
+  for tag_value in "$TAGS_JSON" "{${shorthand_tags#,}}"; do
+    if az identity create --name "$IDENTITY" --resource-group "$RESOURCE_GROUP" --location "$LOCATION" \
+      --tags "$tag_value" -o none 2>"$errors"; then
+      identity_created=1
+      break
+    fi
+    grep -q "Failed to parse '--tags'" "$errors" || break
+  done
+  if [ "$identity_created" -ne 1 ]; then
     explain
     fail "Could not create managed identity $IDENTITY."
   fi
