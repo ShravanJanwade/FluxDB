@@ -171,6 +171,21 @@ the rule. From then on the app only runs while it is being visited.
   Run workflow**, and enter a number of hours in `warmup_hours`. The new window
   starts immediately.
 
+## GitHub sign-in
+
+GitHub only lets you create the OAuth app this needs in the browser. In Cloud
+Shell, after `gh auth login`, run:
+
+```bash
+bash FluxDB/deploy/azure/github-signin.sh
+```
+
+It prints the homepage and callback URLs to enter at
+<https://github.com/settings/applications/new> (callback
+`https://fluxdb.<your-domain>/api/cloud/auth/github/callback`), asks for the client
+ID and secret in a hidden prompt, stores them as the `GH_OAUTH_*` secrets and
+redeploys. Re-run it to switch to a new OAuth app or secret.
+
 ## Optional settings
 
 Add these under **Settings → Secrets and variables → Actions**, then re-run the
@@ -179,7 +194,7 @@ workflow.
 | Name | Kind | Effect |
 | --- | --- | --- |
 | `DATABASE_URL` | secret | Postgres for accounts, projects and API keys, for example the Render deployment's Neon URL with `?sslmode=require`. |
-| `GH_OAUTH_CLIENT_ID`, `GH_OAUTH_CLIENT_SECRET` | secrets | Enable GitHub sign-in. Set the OAuth app's callback to `https://fluxdb.<your-domain>/api/cloud/auth/github/callback`. |
+| `GH_OAUTH_CLIENT_ID`, `GH_OAUTH_CLIENT_SECRET` | secrets | Enable GitHub sign-in; `github-signin.sh` sets both (see above). |
 | `GEMINI_API_KEY` | secret | Enables the assistant and agent for registered accounts. |
 | `GEMINI_MODEL` | variable | Default `gemini-2.5-flash`. |
 | `IDLE_SHUTDOWN_SECONDS` | variable | Idle time before scaling to zero, default `1800`, minimum `300`. |
