@@ -11,6 +11,8 @@ on:
     paths-ignore:
       - '**.md'
       - 'docs/**'
+      # The redirect for the old Render address builds on Render, not here.
+      - 'deploy/render-redirect/**'
   workflow_dispatch:
     inputs:
       warmup_hours:

@@ -206,11 +206,28 @@ GitHub secret names cannot start with `GITHUB_`, hence `GH_OAUTH_…`.
 A Neon database suspends its own compute a few minutes after the last query,
 and FluxDB only queries it while the app is awake, so it sleeps along with it.
 
-## Step 6 — Retire the Render service
+## Step 6 — Turn the Render service into a redirect
 
-Once the Azure address works, update the links that point at
-`fluxdb-demo.onrender.com` (this README, your resume, your portfolio), point the
-GitHub OAuth app at the new callback, and delete the Render service.
+Resumes already sent out link to `fluxdb-demo.onrender.com`, and only Render can
+answer that address. So rather than deleting the service, run
+`deploy/render-redirect` on it: a few lines of Node that send every request to
+the same path on Azure. It stays on Render's free plan, so it costs nothing. In
+the Render dashboard, open the **fluxdb-demo** service:
+
+1. **Settings → Build & Deploy**: set **Dockerfile Path** to
+   `./deploy/render-redirect/Dockerfile` and **Docker Build Context** to
+   `./deploy/render-redirect`. Optionally set **Build Filters → Included Paths**
+   to `deploy/render-redirect/**`, so other pushes don't rebuild it.
+2. **Environment**: add `REDIRECT_TO` with the Azure origin,
+   `https://fluxdb.<your-domain>`, and nothing after it. The old variables can
+   stay or go.
+3. **Manual Deploy → Deploy latest commit**, then open
+   <https://fluxdb-demo.onrender.com>; it should land on the Azure FluxDB.
+
+Render's free plan sleeps after 15 idle minutes, so an old link can take up to a
+minute before it forwards. Browsers remember the redirect for a day. Don't run a
+Blueprint sync from `render.yaml` afterwards: it still describes the full app
+(for anyone deploying FluxDB on Render) and would put it back.
 
 ## Keeping an eye on the credit
 
