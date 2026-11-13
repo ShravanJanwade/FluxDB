@@ -14,13 +14,17 @@ import {
   ArrowRight,
   BarChart3,
   Bell,
+  Building2,
+  CandlestickChart,
   Check,
   Clock,
   Copy,
   Database,
+  ExternalLink,
   FileCode2,
   Gauge,
   Github,
+  HeartPulse,
   KeyRound,
   Layers,
   Play,
@@ -56,6 +60,7 @@ export default function Landing() {
       <MarketingNav />
       <main>
         <Hero stats={stats} />
+        <UseCases />
         <Problem />
         <Architecture />
         <Features />
@@ -87,6 +92,7 @@ function MarketingNav() {
           <Logo />
         </Link>
         <nav className="m-nav-links" aria-label="Sections">
+          <a href="#use-cases">Use cases</a>
           <a href="#problem">Why</a>
           <a href="#architecture">Architecture</a>
           <a href="#engine">Engine</a>
@@ -286,6 +292,101 @@ function HeroChart() {
         </div>
       </div>
     </figure>
+  );
+}
+
+/** Three small apps on Vercel that use FluxDB as their database. Source:
+ *  examples/use-cases. */
+const USE_CASES_URL = "https://fluxdb-use-cases.vercel.app";
+
+function UseCases() {
+  const cases = [
+    {
+      Icon: Building2,
+      sector: "Energy",
+      title: "Campus energy monitor",
+      path: "/energy",
+      body: "Submeters in four buildings write a reading every five minutes. Demand per building, the end-use split, solar output and today's bill all come from FluxDB queries.",
+      points: [
+        "MEAN … GROUP BY time($interval), building",
+        "SUM for kWh and the daily cost",
+        "A week of readings per building",
+      ],
+    },
+    {
+      Icon: HeartPulse,
+      sector: "Healthcare",
+      title: "Ward vitals board",
+      path: "/healthcare",
+      body: "Bedside monitors write five vital signs a minute for eight patients. The board scores each with NEWS2, and observations a nurse records go straight into FluxDB.",
+      points: [
+        "LAST() per bed for the live board",
+        "COUNT … WHERE hr > 110 OR … for alerts",
+        "Integer, boolean and string fields",
+      ],
+    },
+    {
+      Icon: CandlestickChart,
+      sector: "Finance",
+      title: "Crypto market board",
+      path: "/markets",
+      body: "Real one-minute candles for BTC, ETH and SOL from Coinbase. FluxDB rolls them up into 5- and 15-minute candlesticks when the chart asks.",
+      points: [
+        "FIRST, MAX, MIN, LAST and SUM for OHLCV",
+        "STDDEV of price per product",
+        "No pre-aggregated tables",
+      ],
+    },
+  ];
+  return (
+    <section className="m-section m-section-alt" id="use-cases">
+      <div className="m-shell">
+        <SectionHead
+          eyebrow="Use cases"
+          title="FluxDB as an app's database"
+          lede="Three small apps, each a Next.js backend and frontend on Vercel, that use FluxDB the way you would use Postgres or Supabase: the backend writes readings and runs SQL over HTTPS with a project API key, and the page draws the answer. Every dashboard lists the queries it just ran and how long FluxDB took."
+        />
+        <div className="m-grid m-grid-3">
+          {cases.map((item) => (
+            <article key={item.title} className="m-plan">
+              <span className="m-card-icon">
+                <item.Icon size={18} aria-hidden />
+              </span>
+              <span className="m-plan-price">{item.sector}</span>
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
+              <ul>
+                {item.points.map((point) => (
+                  <li key={point}>
+                    <Check size={14} aria-hidden /> {point}
+                  </li>
+                ))}
+              </ul>
+              <a
+                className="btn"
+                href={`${USE_CASES_URL}${item.path}`}
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                Open the app <ExternalLink size={14} aria-hidden />
+              </a>
+            </article>
+          ))}
+        </div>
+        <p className="m-code-foot">
+          <FileCode2 size={15} aria-hidden /> The source, including a small
+          typed client and the catch-up ingestion, is in{" "}
+          <a
+            href={`${REPOSITORY}/tree/master/examples/use-cases`}
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            examples/use-cases
+          </a>
+          . The energy and ward data are simulated; market prices are real.
+        </p>
+      </div>
+    </section>
   );
 }
 

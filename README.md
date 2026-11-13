@@ -12,6 +12,10 @@ engine, the control plane, the token API and the browser console.
 > **[Open the live demo →](https://fluxdb.icygrass-95174406.westus2.azurecontainerapps.io)**
 > Click **Explore the demo**; no account needed. The demo sleeps when nobody is
 > using it, so the first load after a quiet spell takes a few seconds.
+>
+> **[See it used by real apps →](https://fluxdb-use-cases.vercel.app)**
+> Energy, healthcare and finance dashboards on Vercel that keep their data in
+> FluxDB. Source in [examples/use-cases](examples/use-cases).
 
 Or run it yourself:
 
@@ -31,6 +35,7 @@ query finds the failing service.
 
 - [What it is](#what-it-is)
 - [The demo dataset](#the-demo-dataset)
+- [Use cases](#use-cases)
 - [Run it locally](#run-it-locally)
 - [Deploy it](#deploy-it)
 - [Sending data](#sending-data)
@@ -106,6 +111,25 @@ catalog           67.69    1,804
 A guest workspace gets a private, writable copy of a smaller sample plus
 read-only access to the shared showcase. It is deleted automatically, with
 everything in it, after 24 hours.
+
+## Use cases
+
+[examples/use-cases](examples/use-cases) holds three small apps that use FluxDB
+as their only database, the way an ordinary app uses Postgres or Supabase. Each
+is a Next.js backend and frontend deployed on Vercel: the route handlers write
+readings to the hosted FluxDB and query them over HTTPS with a project API key,
+and the pages draw the answers.
+
+| Sector | Live app | What it shows |
+| --- | --- | --- |
+| Energy | [Campus energy monitor](https://fluxdb-use-cases.vercel.app/energy) | 5-minute submeter readings for four buildings; demand by building with `GROUP BY time($interval), building`, the end-use split, solar and today's bill |
+| Healthcare | [Ward vitals board](https://fluxdb-use-cases.vercel.app/healthcare) | A minute of vital signs per bed; `LAST() … GROUP BY bed` feeds NEWS2 early-warning scores, and observations a nurse records are written straight to FluxDB |
+| Finance | [Crypto market board](https://fluxdb-use-cases.vercel.app/markets) | Real one-minute candles from Coinbase, rolled up into candlesticks by `FIRST(open), MAX(high), MIN(low), LAST(close)` at query time |
+
+Each dashboard ends with a panel listing what its last request wrote, every SQL
+query it ran and how long FluxDB took. There is no cron job: a visit fills in
+the readings since the last one and then queries. The energy and ward data are
+simulated; the market data is real.
 
 ## Run it locally
 

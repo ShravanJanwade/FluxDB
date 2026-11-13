@@ -63,3 +63,18 @@ describe("the console tour checklist", () => {
     ).toEqual(["Ctrl", "⌘", "K"]);
   });
 });
+
+describe("the use cases section", () => {
+  it("links each sector to its live app", () => {
+    const { container } = landing();
+    const links = [
+      ...container.querySelectorAll<HTMLAnchorElement>("#use-cases a.btn"),
+    ].map((link) => link.getAttribute("href"));
+
+    expect(links).toEqual([
+      "https://fluxdb-use-cases.vercel.app/energy",
+      "https://fluxdb-use-cases.vercel.app/healthcare",
+      "https://fluxdb-use-cases.vercel.app/markets",
+    ]);
+  });
+});
