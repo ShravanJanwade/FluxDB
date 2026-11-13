@@ -13,6 +13,8 @@ on:
       - 'docs/**'
       # The redirect for the old Render address builds on Render, not here.
       - 'deploy/render-redirect/**'
+      # The use-case apps deploy to Vercel on their own.
+      - 'examples/**'
   workflow_dispatch:
     inputs:
       warmup_hours:
