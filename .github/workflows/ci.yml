@@ -58,6 +58,27 @@ jobs:
       - run: npm run build
         working-directory: fluxdb-studio
 
+  use-cases:
+    name: Use-case apps
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/use-cases
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: examples/use-cases/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      # Line protocol, NEWS2 scoring and the catch-up ranges.
+      - run: npm test
+      # No FluxDB is needed to build: the pages are static and the API routes
+      # read their settings when a request arrives.
+      - run: npm run build
+
   container:
     name: Container image
     runs-on: ubuntu-latest
