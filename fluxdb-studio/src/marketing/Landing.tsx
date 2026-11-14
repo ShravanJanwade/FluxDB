@@ -1,37 +1,31 @@
 /**
  * The public front page.
  *
- * Two rules shaped the copy. Every number on this page is measured from the
- * running instance or from a benchmark that ships in the repository — nothing
- * is invented, and the "what this is not" section is as prominent as the
- * feature grid. A database that overstates itself is not credible, and the
- * limits are more interesting than the buzzwords anyway.
+ * One idea per section, in the order a visitor needs them: what FluxDB is,
+ * the product doing its job, where it is used, what is underneath, how to
+ * start, and what it is not. Every number on this page is measured from the
+ * running instance or from a benchmark in the repository, and the limits are
+ * stated as plainly as the features.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
-  BarChart3,
+  ArrowUpRight,
   Bell,
   Building2,
   CandlestickChart,
   Check,
-  Clock,
   Copy,
-  Database,
-  ExternalLink,
-  FileCode2,
   Gauge,
   Github,
   HeartPulse,
   KeyRound,
-  Layers,
+  LayoutDashboard,
   Play,
-  Server,
-  ShieldCheck,
-  Terminal,
-  Zap,
+  ScrollText,
+  Users,
 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import { ThemeToggle } from "../components/ThemeToggle";
@@ -41,45 +35,42 @@ import type { PublicStats } from "../lib/types";
 import "../styles/marketing.css";
 
 const REPOSITORY = "https://github.com/ShravanJanwade/FluxDB";
+const USE_CASES_URL = "https://fluxdb-use-cases.vercel.app";
 
 export default function Landing() {
   const [stats, setStats] = useState<PublicStats | null>(null);
 
   useEffect(() => {
-    // The hero quotes this instance's own figures. If the call fails the
-    // numbers are simply omitted rather than replaced with placeholders.
+    // The hero quotes this instance's own figures. If the call fails they
+    // are left out rather than replaced with placeholders.
     api
       .publicStats()
       .then(setStats)
       .catch(() => setStats(null));
-    document.title = "FluxDB — a time-series database you can read end to end";
+    document.title = "FluxDB: a time-series database you can read end to end";
   }, []);
 
   return (
     <div className="marketing">
-      <MarketingNav />
+      <Nav />
       <main>
         <Hero stats={stats} />
         <UseCases />
-        <Problem />
-        <Architecture />
-        <Features />
+        <Engine />
+        <Console />
         <Quickstart />
-        <ConsoleTour />
-        <Deployment />
         <Limits />
-        <Faq />
-        <ClosingCta />
+        <Closing />
       </main>
-      <MarketingFooter version={stats?.version} />
+      <Footer version={stats?.version} />
     </div>
   );
 }
 
-function MarketingNav() {
+function Nav() {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
+    const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -89,27 +80,26 @@ function MarketingNav() {
     <header className={`m-nav${scrolled ? " is-scrolled" : ""}`}>
       <div className="m-shell m-nav-inner">
         <Link to="/" className="m-nav-brand" aria-label="FluxDB home">
-          <Logo />
+          <Logo size={26} />
         </Link>
         <nav className="m-nav-links" aria-label="Sections">
           <a href="#use-cases">Use cases</a>
-          <a href="#problem">Why</a>
-          <a href="#architecture">Architecture</a>
           <a href="#engine">Engine</a>
           <a href="#quickstart">Quickstart</a>
-          <a href="#limits">Limits</a>
+          <Link to="/docs">Docs</Link>
         </nav>
         <div className="m-nav-actions">
           <ThemeToggle compact />
           <a
-            className="btn btn-ghost btn-sm m-nav-github"
+            className="btn btn-ghost btn-sm btn-icon m-nav-github"
             href={REPOSITORY}
             target="_blank"
             rel="noreferrer noopener"
+            aria-label="Source on GitHub"
           >
-            <Github size={15} aria-hidden /> Source
+            <Github size={16} aria-hidden />
           </a>
-          <Link className="btn btn-sm" to="/login">
+          <Link className="btn btn-ghost btn-sm m-nav-signin" to="/login">
             Sign in
           </Link>
           <Link className="btn btn-primary btn-sm" to="/signup">
@@ -124,180 +114,195 @@ function MarketingNav() {
 function Hero({ stats }: { stats: PublicStats | null }) {
   return (
     <section className="m-hero">
-      <div className="m-hero-glow" aria-hidden />
-      <div className="m-shell m-hero-inner">
-        <div className="m-hero-copy">
-          <span className="m-eyebrow">
-            <span className="m-pulse" aria-hidden />
-            Written in Rust · LSM storage · SQL over time
+      <div className="m-shell m-hero-copy">
+        <a
+          className="m-chip"
+          href={REPOSITORY}
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          <span className="m-chip-dot" aria-hidden />
+          <span>
+            Open source, written in Rust
+            <span className="m-chip-more"> · one binary, one port</span>
           </span>
-          <h1>
-            A time-series database,
-            <br />
-            <span className="m-gradient">and the console to run it.</span>
-          </h1>
-          <p className="m-lede">
-            FluxDB stores metrics the way a metrics database should — a
-            write-ahead log for durability, a skip-list memtable, compressed
-            SSTables, and a SQL subset with time bucketing. Then it gives you a
-            hosted workspace, project API keys, dashboards and threshold alerts
-            on top, so the storage engine is something you can actually use
-            rather than something you have to read the source to believe.
-          </p>
-          <div className="m-hero-cta">
-            <Link className="btn btn-primary btn-lg" to="/signup">
-              Create a free workspace <ArrowRight size={17} aria-hidden />
-            </Link>
-            <Link className="btn btn-lg" to="/login?demo=1">
-              <Play size={16} aria-hidden /> Open the live demo
-            </Link>
-          </div>
-          <p className="m-hero-note">
-            The demo is one click, needs no email address, and opens a seeded
-            production fleet with an incident already in it. Find it with SQL.
-          </p>
-          <LiveStats stats={stats} />
+          <ArrowRight size={13} aria-hidden />
+        </a>
+        <h1>
+          Store metrics. Query them in SQL.
+          <span>With the console built in.</span>
+        </h1>
+        <p className="m-lede">
+          FluxDB is a time-series database in Rust: a write-ahead log, a
+          skip-list memtable and compressed SSTables underneath, and workspaces,
+          API keys, dashboards and alerts on top.
+        </p>
+        <div className="m-cta">
+          <Link className="btn btn-primary btn-lg" to="/login?demo=1">
+            <Play size={16} aria-hidden /> Open the live demo
+          </Link>
+          <Link className="btn btn-lg" to="/signup">
+            Create a free workspace
+          </Link>
         </div>
-        <HeroChart />
+        <p className="m-note">
+          One click, no email. A seeded fleet with an incident already in it.
+        </p>
+        <LiveStats stats={stats} />
+      </div>
+      <div className="m-shell m-shot-wrap">
+        <ConsoleShot />
       </div>
     </section>
   );
 }
 
 function LiveStats({ stats }: { stats: PublicStats | null }) {
-  const items: { label: string; value: string; hint: string }[] = [];
-  if (stats) {
-    items.push({
-      label: "Points in the demo fleet",
-      value: count(stats.demo_points),
-      hint: "Seeded on this instance",
-    });
-    if (stats.query_p95_ms !== null) {
-      items.push({
-        label: "API p95",
-        value: `${decimal(stats.query_p95_ms)} ms`,
-        hint: `Across ${count(stats.requests_recorded)} recorded requests`,
-      });
-    }
-    items.push({
-      label: "Uptime",
-      value: uptime(stats.uptime_seconds),
-      hint: `Engine v${stats.version}`,
-    });
-  }
-  if (items.length === 0) {
-    return null;
-  }
+  if (!stats) return null;
+  const items = [
+    `${count(stats.demo_points)} points in the demo`,
+    stats.query_p95_ms !== null
+      ? `${decimal(stats.query_p95_ms)} ms API p95`
+      : null,
+    `up ${uptime(stats.uptime_seconds)}`,
+    `engine v${stats.version}`,
+  ].filter(Boolean);
   return (
-    <dl className="m-livestats">
+    <p
+      className="m-live"
+      title="Measured from this deployment just now. Server processing time only."
+    >
+      <span className="m-live-dot" aria-hidden />
+      <span className="m-live-label">Live from this instance</span>
       {items.map((item) => (
-        <div key={item.label}>
-          <dt>{item.label}</dt>
-          <dd>{item.value}</dd>
-          <small>{item.hint}</small>
-        </div>
+        <span key={item}>{item}</span>
       ))}
-      <p className="m-livestats-note">
-        Measured from this deployment right now, not from a marketing slide.
-        Server processing time only — it excludes network latency.
-      </p>
-    </dl>
+    </p>
   );
 }
 
-/**
- * The hero visual. A hand-drawn series with the same shape as the seeded
- * incident: a quiet baseline, a sharp onset, a slow recovery. Drawn once with a
- * stroke animation, and skipped entirely under reduced-motion preferences.
- */
-function HeroChart() {
-  const baseline = [
-    38, 41, 37, 44, 40, 43, 39, 42, 45, 41, 38, 43, 40, 44, 42, 39,
+/** The query explorer, in miniature: one SQL query finding the incident in the demo fleet. */
+function ConsoleShot() {
+  const payments = [
+    38, 41, 37, 44, 40, 43, 39, 42, 45, 41, 38, 43, 40, 44, 58, 96, 148, 186,
+    172, 150, 128, 104, 82, 64, 52, 46, 42, 45, 40, 43, 39, 41,
   ];
-  const incident = [58, 96, 148, 186, 172, 150, 128, 104, 82, 64, 52, 46];
-  const tail = [42, 45, 40, 43, 39, 41, 44, 40];
-  const values = [...baseline, ...incident, ...tail];
-  const width = 560;
-  const height = 300;
-  const maxValue = Math.max(...values) * 1.12;
-  const step = width / (values.length - 1);
-  const point = (value: number, index: number) =>
-    `${(index * step).toFixed(1)},${(height - (value / maxValue) * height).toFixed(1)}`;
-  const line = values.map(point).join(" ");
-  const area = `0,${height} ${line} ${width},${height}`;
-  const peakIndex = values.indexOf(Math.max(...values));
+  const checkout = payments.map(
+    (_, i) => 30 + ((i * 7) % 9) + (i > 15 ? 6 : 0),
+  );
+  const search = payments.map((_, i) => 18 + ((i * 5) % 7));
+  const width = 600;
+  const height = 220;
+  const max = 210;
+  const x = (i: number) => (i * width) / (payments.length - 1);
+  const y = (v: number) => height - (v / max) * height;
+  const line = (values: number[]) =>
+    values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const peak = payments.indexOf(Math.max(...payments));
 
   return (
-    <figure className="m-hero-visual" aria-hidden>
-      <div className="m-chartcard">
-        <div className="m-chartcard-head">
-          <div>
-            <strong>payments · p99 latency</strong>
-            <span>production · us-east-1</span>
+    <figure className="m-shot" aria-label="The FluxDB query explorer">
+      <div className="m-shot-bar" aria-hidden>
+        <span className="m-dots">
+          <i />
+          <i />
+          <i />
+        </span>
+        <span>Production fleet / Explorer</span>
+      </div>
+      <div className="m-shot-body">
+        <div className="m-query">
+          <span className="m-shot-label">Query</span>
+          <pre className="m-sql">
+            <code>
+              <b>SELECT</b> MAX(latency_p99){"\n"}
+              <b>FROM</b> http_requests{"\n"}
+              <b>WHERE</b> $timeFilter{"\n"}
+              <b>GROUP BY</b> time(<em>&apos;1m&apos;</em>), service
+            </code>
+          </pre>
+          <div className="m-query-run">
+            <span className="m-fake-btn">
+              <Play size={12} aria-hidden /> Run
+            </span>
+            <span>9 ms · 1,440 rows</span>
           </div>
-          <span className="badge badge-danger">Alerting</span>
+          <div className="m-query-result">
+            <div>
+              <span>service</span>
+              <span>max p99</span>
+            </div>
+            <div className="is-hot">
+              <span>payments</span>
+              <span>186 ms</span>
+            </div>
+            <div>
+              <span>checkout</span>
+              <span>44 ms</span>
+            </div>
+            <div>
+              <span>search</span>
+              <span>24 ms</span>
+            </div>
+          </div>
         </div>
-        <svg viewBox={`0 0 ${width} ${height}`} className="m-chartsvg">
-          <defs>
-            <linearGradient id="m-area" x1="0" y1="0" x2="0" y2="1">
-              <stop
-                offset="0%"
-                stopColor="var(--brand-500)"
-                stopOpacity="0.34"
+        <div className="m-chart">
+          <div className="m-chart-head">
+            <div>
+              <strong>p99 latency by service</strong>
+              <span>Last hour · 1 minute buckets</span>
+            </div>
+            <span className="badge badge-danger">Alerting</span>
+          </div>
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            preserveAspectRatio="none"
+            aria-hidden
+          >
+            {[0.25, 0.5, 0.75].map((f) => (
+              <line
+                key={f}
+                x1="0"
+                x2={width}
+                y1={height * f}
+                y2={height * f}
+                className="m-grid"
               />
-              <stop
-                offset="100%"
-                stopColor="var(--brand-500)"
-                stopOpacity="0"
-              />
-            </linearGradient>
-            <linearGradient id="m-stroke" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="var(--cyan-500)" />
-              <stop offset="55%" stopColor="var(--brand-500)" />
-              <stop offset="100%" stopColor="var(--cyan-500)" />
-            </linearGradient>
-          </defs>
-          {[0.25, 0.5, 0.75].map((fraction) => (
+            ))}
             <line
-              key={fraction}
               x1="0"
               x2={width}
-              y1={height * fraction}
-              y2={height * fraction}
-              className="m-chartgrid"
+              y1={y(120)}
+              y2={y(120)}
+              className="m-threshold"
             />
-          ))}
-          <line
-            x1="0"
-            x2={width}
-            y1={height - (120 / maxValue) * height}
-            y2={height - (120 / maxValue) * height}
-            className="m-chartthreshold"
-          />
-          <polygon points={area} fill="url(#m-area)" />
-          <polyline points={line} className="m-chartline" />
-          <circle
-            cx={peakIndex * step}
-            cy={height - (values[peakIndex] / maxValue) * height}
-            r="5"
-            className="m-chartpeak"
-          />
-        </svg>
-        <div className="m-chartcard-foot">
-          <code>
-            SELECT MAX(latency_p99) FROM http_requests GROUP BY
-            time(&apos;1m&apos;), service
-          </code>
-          <span>threshold 120 ms</span>
+            <polyline points={line(search)} className="m-series m-series-c" />
+            <polyline points={line(checkout)} className="m-series m-series-b" />
+            <polyline points={line(payments)} className="m-series m-series-a" />
+            <circle
+              cx={x(peak)}
+              cy={y(payments[peak])}
+              r="4.5"
+              className="m-peak"
+            />
+          </svg>
+          <div className="m-chart-legend">
+            <span>
+              <i className="m-series-a" /> payments
+            </span>
+            <span>
+              <i className="m-series-b" /> checkout
+            </span>
+            <span>
+              <i className="m-series-c" /> search
+            </span>
+            <span className="m-chart-threshold">threshold 120 ms</span>
+          </div>
         </div>
       </div>
     </figure>
   );
 }
-
-/** Three small apps on Vercel that use FluxDB as their database. Source:
- *  examples/use-cases. */
-const USE_CASES_URL = "https://fluxdb-use-cases.vercel.app";
 
 function UseCases() {
   const cases = [
@@ -306,125 +311,110 @@ function UseCases() {
       sector: "Energy",
       title: "Campus energy monitor",
       path: "/energy",
-      body: "Submeters in four buildings write a reading every five minutes. Demand per building, the end-use split, solar output and today's bill all come from FluxDB queries.",
-      points: [
-        "MEAN … GROUP BY time($interval), building",
-        "SUM for kWh and the daily cost",
-        "A week of readings per building",
-      ],
+      body: "Submeters in four buildings write a reading every five minutes; demand, solar output and the day's bill are queries.",
+      query: "MEAN(kw) GROUP BY time($interval), building",
     },
     {
       Icon: HeartPulse,
       sector: "Healthcare",
       title: "Ward vitals board",
       path: "/healthcare",
-      body: "Bedside monitors write five vital signs a minute for eight patients. The board scores each with NEWS2, and observations a nurse records go straight into FluxDB.",
-      points: [
-        "LAST() per bed for the live board",
-        "COUNT … WHERE hr > 110 OR … for alerts",
-        "Integer, boolean and string fields",
-      ],
+      body: "Bedside monitors write five vital signs a minute; the board scores every bed and alerts on the outliers.",
+      query: "LAST(hr), LAST(spo2) GROUP BY bed",
     },
     {
       Icon: CandlestickChart,
       sector: "Finance",
       title: "Crypto market board",
       path: "/markets",
-      body: "Real one-minute candles for BTC, ETH and SOL from Coinbase. FluxDB rolls them up into 5- and 15-minute candlesticks when the chart asks.",
-      points: [
-        "FIRST, MAX, MIN, LAST and SUM for OHLCV",
-        "STDDEV of price per product",
-        "No pre-aggregated tables",
-      ],
+      body: "Real one-minute candles from Coinbase, rolled up into 5- and 15-minute candlesticks when the chart asks.",
+      query: "FIRST, MAX, MIN, LAST GROUP BY time('15m')",
     },
   ];
   return (
-    <section className="m-section m-section-alt" id="use-cases">
+    <section className="m-section" id="use-cases">
       <div className="m-shell">
         <SectionHead
-          eyebrow="Use cases"
-          title="FluxDB as an app's database"
-          lede="Three small apps, each a Next.js backend and frontend on Vercel, that use FluxDB the way you would use Postgres or Supabase: the backend writes readings and runs SQL over HTTPS with a project API key, and the page draws the answer. Every dashboard lists the queries it just ran and how long FluxDB took."
+          kicker="Use cases"
+          title="Already the database behind three apps."
+          lede="Each is a Next.js app on Vercel that writes readings and runs SQL over HTTPS with a project API key, the way you would use Postgres."
         />
-        <div className="m-grid m-grid-3">
+        <div className="m-cards">
           {cases.map((item) => (
-            <article key={item.title} className="m-plan">
-              <span className="m-card-icon">
-                <item.Icon size={18} aria-hidden />
+            <article key={item.title} className="m-card">
+              <span className="m-card-sector">
+                <item.Icon size={15} aria-hidden /> {item.sector}
               </span>
-              <span className="m-plan-price">{item.sector}</span>
               <h3>{item.title}</h3>
               <p>{item.body}</p>
-              <ul>
-                {item.points.map((point) => (
-                  <li key={point}>
-                    <Check size={14} aria-hidden /> {point}
-                  </li>
-                ))}
-              </ul>
+              <code className="m-card-query">{item.query}</code>
               <a
-                className="btn"
+                className="btn btn-sm"
                 href={`${USE_CASES_URL}${item.path}`}
                 target="_blank"
                 rel="noreferrer noopener"
               >
-                Open the app <ExternalLink size={14} aria-hidden />
+                Open the app <ArrowUpRight size={14} aria-hidden />
               </a>
             </article>
           ))}
         </div>
-        <p className="m-code-foot">
-          <FileCode2 size={15} aria-hidden /> The source, including a small
-          typed client and the catch-up ingestion, is in{" "}
-          <a
-            href={`${REPOSITORY}/tree/master/examples/use-cases`}
-            target="_blank"
-            rel="noreferrer noopener"
-          >
-            examples/use-cases
-          </a>
-          . The energy and ward data are simulated; market prices are real.
-        </p>
       </div>
     </section>
   );
 }
 
-function Problem() {
-  const items = [
+function Engine() {
+  const path = [
+    { name: "Write", detail: "JSON or line protocol" },
+    { name: "WAL", detail: "Checksummed, synced" },
+    { name: "Memtable", detail: "Sorted skip list" },
+    { name: "SSTables", detail: "Typed, LZ4, bloom filters" },
+    { name: "Query", detail: "SQL with time buckets" },
+  ];
+  const features = [
     {
-      Icon: Clock,
-      title: "Metrics are not rows",
-      body: "A relational table charges you an index per tag and a row per sample. Time-series data arrives append-only, ordered, and mostly numeric — FluxDB writes it to a log, keeps it sorted in memory, and compresses it into immutable files typed by field.",
+      title: "Durable writes",
+      body: "Every point is in the log before it is acknowledged, and a regression suite kills the process mid-write and checks what survives.",
     },
     {
-      Icon: Terminal,
-      title: "A query language you already know",
-      body: "No new dialect to learn for the common cases. SELECT, WHERE, AND/OR/NOT, IN, BETWEEN, LIKE, DISTINCT, aggregates, ORDER BY, LIMIT — plus GROUP BY time('1m') for bucketing. Anything unsupported returns an error that names what it cannot do.",
+      title: "Compact storage",
+      body: "Immutable files encoded per field type and block-compressed, merged by background compaction.",
     },
     {
-      Icon: ShieldCheck,
-      title: "Somewhere to actually keep it",
-      body: "An engine on its own is a library. FluxDB adds accounts, projects, roles, revocable API keys, retention, snapshot export and an audit trail — and it will just as happily talk to a server running on your laptop.",
+      title: "Typed points",
+      body: "Float, 64-bit integer, string and boolean fields with nanosecond timestamps. Exact integers never round-trip through a JSON double.",
+    },
+    {
+      title: "SQL over time",
+      body: "WHERE, IN, BETWEEN, LIKE, aggregates and GROUP BY time('5m') with tags. Anything unsupported says so by name.",
     },
   ];
   return (
-    <section className="m-section" id="problem">
+    <section className="m-section m-section-alt" id="engine">
       <div className="m-shell">
         <SectionHead
-          eyebrow="Why it exists"
-          title="Storing time is a different problem"
-          lede="Every part of this was built to be read: the compression, the recovery path, the query planner and the tenancy boundary are all a few hundred lines you can follow."
+          kicker="The engine"
+          title="Small enough to read end to end."
+          lede="An LSM storage engine in Rust: each layer is a few hundred lines you can follow, and each is tested by breaking it."
         />
-        <div className="m-grid m-grid-3">
-          {items.map(({ Icon, title, body }) => (
-            <article key={title} className="m-card">
-              <span className="m-card-icon">
-                <Icon size={19} aria-hidden />
+        <ol className="m-path" aria-label="Write path">
+          {path.map((step, index) => (
+            <li key={step.name}>
+              <span className="m-path-index">
+                {String(index + 1).padStart(2, "0")}
               </span>
-              <h3>{title}</h3>
-              <p>{body}</p>
-            </article>
+              <strong>{step.name}</strong>
+              <span>{step.detail}</span>
+            </li>
+          ))}
+        </ol>
+        <div className="m-features">
+          {features.map((feature) => (
+            <div key={feature.title}>
+              <h3>{feature.title}</h3>
+              <p>{feature.body}</p>
+            </div>
           ))}
         </div>
       </div>
@@ -432,357 +422,56 @@ function Problem() {
   );
 }
 
-/** Write path, read path and the tenancy boundary, drawn rather than described. */
-function Architecture() {
-  return (
-    <section className="m-section m-section-alt" id="architecture">
-      <div className="m-shell">
-        <SectionHead
-          eyebrow="Architecture"
-          title="What happens to a point"
-          lede="A write is durable before it is acknowledged, and it is never mutated in place afterwards. Everything after that is a background rearrangement of immutable files."
-        />
-        <div className="m-arch">
-          <svg viewBox="0 0 980 360" role="img" aria-labelledby="m-arch-title">
-            <title id="m-arch-title">
-              A write enters through the API, is appended to the checksummed
-              write-ahead log and inserted into the skip-list memtable. Full
-              memtables are flushed to compressed, typed SSTables with bloom
-              filters and a manifest. Reads merge the memtable with the
-              SSTables. Compaction rewrites them to drop obsolete versions and
-              tombstones.
-            </title>
-            <defs>
-              <marker
-                id="m-arrow"
-                viewBox="0 0 10 10"
-                refX="9"
-                refY="5"
-                markerWidth="7"
-                markerHeight="7"
-                orient="auto-start-reverse"
-              >
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--border-strong)" />
-              </marker>
-            </defs>
-
-            {/* Write path */}
-            <ArchBox
-              x={14}
-              y={26}
-              w={158}
-              h={58}
-              label="HTTP API"
-              sub="JSON · line protocol"
-              tone="accent"
-            />
-            <ArchBox
-              x={228}
-              y={26}
-              w={158}
-              h={58}
-              label="Write-ahead log"
-              sub="CRC32 · fsync"
-              tone="accent"
-            />
-            <ArchBox
-              x={442}
-              y={26}
-              w={158}
-              h={58}
-              label="Memtable"
-              sub="skip list · sorted"
-              tone="accent"
-            />
-            <ArchBox
-              x={656}
-              y={26}
-              w={158}
-              h={58}
-              label="SSTable"
-              sub="LZ4 · typed blocks"
-              tone="accent"
-            />
-
-            <ArchArrow x1={172} y1={55} x2={228} y2={55} />
-            <ArchArrow x1={386} y1={55} x2={442} y2={55} />
-            <ArchArrow x1={600} y1={55} x2={656} y2={55} label="flush" />
-
-            {/* Durable artefacts */}
-            <ArchBox
-              x={656}
-              y={140}
-              w={158}
-              h={54}
-              label="Manifest"
-              sub="atomic checkpoint"
-            />
-            <ArchBox
-              x={656}
-              y={216}
-              w={158}
-              h={54}
-              label="Bloom filter"
-              sub="skip absent series"
-            />
-            <ArchArrow x1={735} y1={84} x2={735} y2={140} />
-            <ArchArrow x1={735} y1={194} x2={735} y2={216} />
-
-            {/* Read path */}
-            <ArchBox
-              x={14}
-              y={178}
-              w={158}
-              h={58}
-              label="SQL query"
-              sub="parse · plan"
-              tone="cyan"
-            />
-            <ArchBox
-              x={228}
-              y={178}
-              w={158}
-              h={58}
-              label="Merge reader"
-              sub="memtable + SSTables"
-              tone="cyan"
-            />
-            <ArchBox
-              x={442}
-              y={178}
-              w={158}
-              h={58}
-              label="Aggregation"
-              sub="time buckets · tags"
-              tone="cyan"
-            />
-            <ArchArrow x1={172} y1={207} x2={228} y2={207} />
-            <ArchArrow x1={386} y1={207} x2={442} y2={207} />
-            <ArchArrow x1={656} y1={243} x2={600} y2={215} />
-
-            {/* Compaction */}
-            <ArchBox
-              x={656}
-              y={292}
-              w={158}
-              h={50}
-              label="Compaction"
-              sub="drop tombstones"
-            />
-            <ArchArrow x1={735} y1={270} x2={735} y2={292} />
-
-            {/* Tenancy */}
-            <rect
-              x={848}
-              y={26}
-              width={118}
-              height={316}
-              rx={12}
-              className="m-arch-tenancy"
-            />
-            <text x={907} y={58} className="m-arch-label" textAnchor="middle">
-              Tenancy
-            </text>
-            <text x={907} y={84} className="m-arch-sub" textAnchor="middle">
-              project id
-            </text>
-            <text x={907} y={102} className="m-arch-sub" textAnchor="middle">
-              prefixes every
-            </text>
-            <text x={907} y={120} className="m-arch-sub" textAnchor="middle">
-              database name
-            </text>
-            <text x={907} y={156} className="m-arch-sub" textAnchor="middle">
-              roles checked
-            </text>
-            <text x={907} y={174} className="m-arch-sub" textAnchor="middle">
-              before any
-            </text>
-            <text x={907} y={192} className="m-arch-sub" textAnchor="middle">
-              name resolves
-            </text>
-            <text x={907} y={228} className="m-arch-sub" textAnchor="middle">
-              API keys are
-            </text>
-            <text x={907} y={246} className="m-arch-sub" textAnchor="middle">
-              project scoped
-            </text>
-          </svg>
-        </div>
-        <div className="m-arch-notes">
-          <div>
-            <h4>Durability</h4>
-            <p>
-              Each WAL entry carries a CRC32 checksum and is synced before the
-              write returns. On recovery a truncated trailing entry is dropped
-              and anything corrupt in the middle is reported rather than
-              silently skipped.
-            </p>
-          </div>
-          <div>
-            <h4>Updates and deletes</h4>
-            <p>
-              Rewriting the same measurement, tag set and timestamp merges
-              fields; supplied fields replace existing values. Deletes write
-              tombstones, and compaction is what actually reclaims the space.
-            </p>
-          </div>
-          <div>
-            <h4>Isolation</h4>
-            <p>
-              A project owns the <code>t&#123;project&#125;_*</code> prefix of
-              engine database names. No request can name a database directly, so
-              guessing another tenant&apos;s ids gets you a 404, not their data.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ArchBox({
-  x,
-  y,
-  w,
-  h,
-  label,
-  sub,
-  tone,
-}: {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  label: string;
-  sub: string;
-  tone?: "accent" | "cyan";
-}) {
-  return (
-    <g className={`m-arch-box${tone ? ` tone-${tone}` : ""}`}>
-      <rect x={x} y={y} width={w} height={h} rx={10} />
-      <text
-        x={x + w / 2}
-        y={y + h / 2 - 3}
-        className="m-arch-label"
-        textAnchor="middle"
-      >
-        {label}
-      </text>
-      <text
-        x={x + w / 2}
-        y={y + h / 2 + 15}
-        className="m-arch-sub"
-        textAnchor="middle"
-      >
-        {sub}
-      </text>
-    </g>
-  );
-}
-
-function ArchArrow({
-  x1,
-  y1,
-  x2,
-  y2,
-  label,
-}: {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-  label?: string;
-}) {
-  return (
-    <g>
-      <line
-        x1={x1}
-        y1={y1}
-        x2={x2}
-        y2={y2}
-        className="m-arch-arrow"
-        markerEnd="url(#m-arrow)"
-      />
-      {label && (
-        <text
-          x={(x1 + x2) / 2}
-          y={y1 - 8}
-          className="m-arch-sub"
-          textAnchor="middle"
-        >
-          {label}
-        </text>
-      )}
-    </g>
-  );
-}
-
-function Features() {
-  const features = [
+function Console() {
+  const items = [
     {
-      Icon: Layers,
-      title: "LSM storage engine",
-      body: "Skip-list memtable, immutable SSTables with per-field type encoding, LZ4 block compression, bloom filters on series keys, and manifest-based full compaction.",
-    },
-    {
-      Icon: ShieldCheck,
-      title: "Durability you can test",
-      body: "Checksummed WAL with immediate sync, recovery of interrupted trailing writes, corruption detection, and a regression suite that kills and restarts the process mid-write.",
-    },
-    {
-      Icon: Database,
-      title: "Typed points",
-      body: "Measurement, full tag set, nanosecond timestamp, and float, signed 64-bit integer, string or boolean fields. Exact integers travel as decimal strings so JSON cannot round them.",
-    },
-    {
-      Icon: BarChart3,
-      title: "SQL with time buckets",
-      body: "Predicates on fields and tags, AND/OR/NOT, IN, BETWEEN, LIKE, IS NULL, DISTINCT, aggregates, ordering, limits, offsets, and GROUP BY time('5m') with tag grouping.",
+      Icon: Users,
+      title: "Workspaces and roles",
+      body: "Accounts, projects and buckets, with owner, editor and viewer roles.",
     },
     {
       Icon: KeyRound,
       title: "Project API keys",
-      body: "Scoped read/write tokens for agents and SDKs, over line protocol or JSON. Only a SHA-256 of the secret is stored, the plaintext is shown once, and revocation is immediate.",
+      body: "Scoped read and write tokens, stored as a hash and revocable at once.",
+    },
+    {
+      Icon: LayoutDashboard,
+      title: "Dashboards",
+      body: "Saved panels over live queries, with time ranges and variables.",
     },
     {
       Icon: Bell,
       title: "Monitors and alerts",
-      body: "Threshold checks evaluated server-side every minute against real queries, recording state transitions into an alert feed instead of one entry per sweep.",
+      body: "Threshold checks every minute, recording each change of state.",
+    },
+    {
+      Icon: ScrollText,
+      title: "Audit trail",
+      body: "Every change to a project, by whom and when.",
     },
     {
       Icon: Gauge,
       title: "Observable by default",
-      body: "Request latency and error history, per-bucket point counts, SSTable counts and memtable size, plus a Prometheus endpoint and an OpenAPI document.",
-    },
-    {
-      Icon: Server,
-      title: "Your server or ours",
-      body: "Point the console at a FluxDB on your own machine and the browser talks to it directly — its token stays in the tab and never reaches this host.",
-    },
-    {
-      Icon: Zap,
-      title: "Operational controls",
-      body: "Retention policies, manual flush and compaction, JSON snapshot export and restore, bounded request bodies and batch sizes, and a concurrency ceiling.",
+      body: "Request latency, point and file counts, Prometheus metrics, OpenAPI.",
     },
   ];
   return (
-    <section className="m-section" id="engine">
+    <section className="m-section" id="console">
       <div className="m-shell">
         <SectionHead
-          eyebrow="Engine and platform"
-          title="What is actually implemented"
-          lede="Not a roadmap. Every item here has code and tests behind it in the repository."
+          kicker="The console"
+          title="Everything around the engine."
+          lede="An engine on its own is a library. The console makes it something a team can use, from the same process on the same port."
         />
-        <div className="m-grid m-grid-3">
-          {features.map(({ Icon, title, body }) => (
-            <article key={title} className="m-feature">
-              <span className="m-card-icon">
-                <Icon size={18} aria-hidden />
-              </span>
-              <h3>{title}</h3>
-              <p>{body}</p>
-            </article>
+        <div className="m-grid">
+          {items.map(({ Icon, title, body }) => (
+            <div key={title} className="m-grid-item">
+              <Icon size={17} aria-hidden />
+              <div>
+                <h3>{title}</h3>
+                <p>{body}</p>
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -790,106 +479,50 @@ function Features() {
   );
 }
 
-const SNIPPETS: {
-  id: string;
-  label: string;
-  language: string;
-  code: string;
-}[] = [
+const SNIPPETS: { id: string; label: string; code: string }[] = [
   {
     id: "curl",
     label: "curl",
-    language: "bash",
-    code: `# Create a project API key in the console, then write points.
+    code: `# Write a point with a project API key from the console.
 curl -X POST 'https://YOUR-DEPLOYMENT/api/ingest/v1/points?bucket=production' \\
   -H 'Authorization: Bearer fdbk_YOUR_KEY' \\
   -H 'Content-Type: application/json' \\
-  -d '{"points":[{
-        "measurement":"cpu",
-        "tags":{"host":"api-01","region":"us-east-1"},
+  -d '{"points":[{"measurement":"cpu",
+        "tags":{"host":"api-01"},
         "timestamp":"1789142400000000000",
-        "fields":{"usage":42.8,"cores":{"integer":"8"}}
-      }]}'
+        "fields":{"usage":42.8}}]}'
 
+# Then query it.
 curl -X POST 'https://YOUR-DEPLOYMENT/api/ingest/v1/query' \\
   -H 'Authorization: Bearer fdbk_YOUR_KEY' \\
-  -H 'Content-Type: application/json' \\
   -d '{"bucket":"production",
-       "query":"SELECT MEAN(usage) AS cpu FROM cpu WHERE $timeFilter GROUP BY time($interval), host"}'`,
+       "query":"SELECT MEAN(usage) FROM cpu WHERE $timeFilter GROUP BY time($interval), host"}'`,
   },
   {
     id: "line",
     label: "Line protocol",
-    language: "bash",
-    code: `# The format your existing metrics agent already speaks.
+    code: `# The format your metrics agent already speaks.
 curl -X POST 'https://YOUR-DEPLOYMENT/api/ingest/v1/write?bucket=production&precision=s' \\
   -H 'Authorization: Bearer fdbk_YOUR_KEY' \\
   --data-binary '
-cpu,host=api-01,region=us-east-1 usage=42.8,cores=8i 1789142400
-cpu,host=api-02,region=us-east-1 usage=37.1,cores=8i 1789142400
-http_requests,service=checkout requests=2412i,errors=3i,latency_p99=184.2 1789142400'`,
+cpu,host=api-01 usage=42.8,cores=8i 1789142400
+http_requests,service=checkout requests=2412i,latency_p99=184.2 1789142400'`,
   },
   {
-    id: "python",
-    label: "Python",
-    language: "python",
-    code: `from fluxdb import FluxDB   # sdk/python/fluxdb.py
-
-db = FluxDB("http://127.0.0.1:8086", token="YOUR_TOKEN")
-db.create_database("observability")
-
-db.write_points("observability", [{
-    "measurement": "cpu",
-    "tags": {"host": "api-01"},
-    "timestamp": "1789142400000000000",
-    "fields": {"usage": 42.8, "cores": {"integer": "8"}},
-}])
-
-result = db.query("observability", "SELECT MEAN(usage) FROM cpu")
-print(result["columns"], result["rows"])`,
-  },
-  {
-    id: "javascript",
-    label: "JavaScript",
-    language: "javascript",
-    code: `import { FluxDB } from "./sdk/javascript/fluxdb.mjs";
-
-const db = new FluxDB("http://127.0.0.1:8086", { token: "YOUR_TOKEN" });
-await db.createDatabase("observability");
-
-await db.writePoints("observability", [{
-  measurement: "cpu",
-  tags: { host: "api-01" },
-  timestamp: "1789142400000000000",
-  fields: { usage: 42.8, cores: { integer: "8" } },
-}]);
-
-const { columns, rows } = await db.query(
-  "observability",
-  "SELECT MAX(usage) FROM cpu WHERE host = 'api-01'",
-);`,
-  },
-  {
-    id: "docker",
-    label: "Self-host",
-    language: "bash",
+    id: "local",
+    label: "Run locally",
     code: `git clone https://github.com/ShravanJanwade/FluxDB.git
 cd FluxDB
-
-# One command: builds the engine, installs the console, waits for both.
 node start-all.js
-# Console on http://127.0.0.1:5173, API on http://127.0.0.1:8086
 
-# Or with containers:
-cp .env.example .env    # then replace the placeholder token
-docker compose up --build -d`,
+# Then open http://127.0.0.1:5173 and click "Explore the demo".`,
   },
 ];
 
 function Quickstart() {
   const [active, setActive] = useState(SNIPPETS[0].id);
   const [copied, setCopied] = useState(false);
-  const snippet = SNIPPETS.find((entry) => entry.id === active) ?? SNIPPETS[0];
+  const snippet = SNIPPETS.find((s) => s.id === active) ?? SNIPPETS[0];
 
   const copy = async () => {
     try {
@@ -897,26 +530,27 @@ function Quickstart() {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
-      // Clipboard access can be refused; the code is selectable regardless.
+      // Clipboard access can be refused; the code stays selectable.
     }
   };
 
   return (
     <section className="m-section m-section-alt" id="quickstart">
-      <div className="m-shell">
+      <div className="m-shell m-split">
         <SectionHead
-          eyebrow="Quickstart"
-          title="Writing your first point"
-          lede={
-            'Timestamps are decimal nanosecond strings and exact integers are {"integer": "…"}, because a JSON double cannot carry the full 64-bit range. That is the only surprise in the API.'
-          }
-        />
+          kicker="Quickstart"
+          title="Your first point in one request."
+          lede="Create a project API key in the console, then write and query over HTTPS. Timestamps are nanosecond strings; that is the only surprise in the API."
+        >
+          <p className="m-split-links">
+            <Link to="/docs">
+              Read the docs <ArrowRight size={14} aria-hidden />
+            </Link>
+            <a href="/api/v1/openapi.json">OpenAPI document</a>
+          </p>
+        </SectionHead>
         <div className="m-code">
-          <div
-            className="m-code-tabs"
-            role="tablist"
-            aria-label="Quickstart language"
-          >
+          <div className="m-code-tabs" role="tablist" aria-label="Quickstart">
             {SNIPPETS.map((entry) => (
               <button
                 key={entry.id}
@@ -939,304 +573,55 @@ function Quickstart() {
             </button>
           </div>
           <pre>
-            <code>{snippet.code}</code>
+            <code>
+              {snippet.code.split("\n").map((line, index) => (
+                <span
+                  key={index}
+                  className={line.startsWith("#") ? "is-comment" : undefined}
+                >
+                  {line}
+                  {"\n"}
+                </span>
+              ))}
+            </code>
           </pre>
         </div>
-        <p className="m-code-foot">
-          <FileCode2 size={15} aria-hidden /> Full reference in the console
-          under <strong>Developer resources</strong>, plus an OpenAPI document
-          at <code>/api/v1/openapi.json</code> and clients for Python and
-          JavaScript in the repository.
-        </p>
       </div>
     </section>
   );
 }
 
-/** A static rendering of the console's shape. Deliberately not a screenshot:
- *  it stays correct when the console changes, and it restyles with the theme. */
-function ConsoleTour() {
-  const rows = [
-    ["payments", "1,842 ms", "9.1 %", "critical"],
-    ["checkout", "612 ms", "1.4 %", "warning"],
-    ["search", "118 ms", "0.2 %", "ok"],
-    ["catalog", "54 ms", "0.1 %", "ok"],
-  ];
-  return (
-    <section className="m-section" id="console">
-      <div className="m-shell m-tour">
-        <div className="m-tour-copy">
-          <SectionHead
-            eyebrow="The console"
-            title="Built for the moment something breaks"
-            lede="Pick a range, group by service, and read the answer. The workspace is organised the way you already think about infrastructure: organisation, project, bucket, measurement."
-            align="left"
-          />
-          {/* Each item keeps exactly two children: the icon and one span.
-              The li is a grid, and a grid container blockifies every child, so
-              loose text and inline <code>/<kbd> became separate grid items and
-              flowed through the icon column. */}
-          <ul className="m-checklist">
-            <li>
-              <Check size={16} aria-hidden />
-              <span>
-                Query workspace with saved history, worked examples and results
-                you can chart or export
-              </span>
-            </li>
-            <li>
-              <Check size={16} aria-hidden />
-              <span>
-                Data explorer with schema discovery, per-field charts and
-                point-level edit and delete
-              </span>
-            </li>
-            <li>
-              <Check size={16} aria-hidden />
-              <span>
-                Dashboards whose panels carry <code>$timeFilter</code> and{" "}
-                <code>$interval</code>, so one panel serves every range
-              </span>
-            </li>
-            <li>
-              <Check size={16} aria-hidden />
-              <span>
-                Members and roles, revocable API keys, retention controls and an
-                audit trail
-              </span>
-            </li>
-            <li>
-              <Check size={16} aria-hidden />
-              <span>
-                Light and dark, keyboard navigation, and a command palette on{" "}
-                <span className="m-keys">
-                  <kbd>Ctrl</kbd>
-                  <span aria-hidden>/</span>
-                  <kbd>⌘</kbd>
-                  <kbd>K</kbd>
-                </span>
-              </span>
-            </li>
-          </ul>
-          <Link className="btn btn-primary" to="/login?demo=1">
-            Try it on the seeded fleet <ArrowRight size={16} aria-hidden />
-          </Link>
-        </div>
-        <div className="m-tour-mock" aria-hidden>
-          <div className="m-mock">
-            <div className="m-mock-bar">
-              <span className="m-mock-dot" />
-              <span className="m-mock-dot" />
-              <span className="m-mock-dot" />
-              <span className="m-mock-url">
-                fluxdb · production observability
-              </span>
-            </div>
-            <div className="m-mock-body">
-              <aside className="m-mock-side">
-                {[
-                  "Overview",
-                  "Buckets",
-                  "Explorer",
-                  "Query",
-                  "Dashboards",
-                  "Monitors",
-                ].map((item, index) => (
-                  <span
-                    key={item}
-                    className={index === 3 ? "is-active" : undefined}
-                  >
-                    {item}
-                  </span>
-                ))}
-              </aside>
-              <div className="m-mock-main">
-                <div className="m-mock-query">
-                  <code>
-                    SELECT MAX(latency_p99) AS p99, MEAN(error_rate) AS errors
-                    <br />
-                    FROM http_requests WHERE $timeFilter GROUP BY service
-                    <br />
-                    ORDER BY p99 DESC
-                  </code>
-                </div>
-                <table className="m-mock-table">
-                  <thead>
-                    <tr>
-                      <th>service</th>
-                      <th>p99</th>
-                      <th>errors</th>
-                      <th>state</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row) => (
-                      <tr key={row[0]}>
-                        <td>{row[0]}</td>
-                        <td>{row[1]}</td>
-                        <td>{row[2]}</td>
-                        <td>
-                          <span
-                            className={`badge badge-${
-                              row[3] === "critical"
-                                ? "danger"
-                                : row[3] === "warning"
-                                  ? "warning"
-                                  : "success"
-                            }`}
-                          >
-                            {row[3]}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="m-mock-foot">
-                  4 rows · 11.4 ms · bucket production
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Deployment() {
-  const options = [
-    {
-      Icon: Zap,
-      title: "Hosted workspace",
-      price: "Free",
-      body: "Sign in with email or GitHub and get an organisation, projects, buckets and API keys. Sized for evaluation and side projects, not for your production fleet.",
-      points: [
-        "5 projects, 8 buckets each",
-        "Project API keys with scopes",
-        "Dashboards, monitors, audit trail",
-      ],
-      cta: { to: "/signup", label: "Create a workspace" },
-      featured: true,
-    },
-    {
-      Icon: Server,
-      title: "Your own server",
-      price: "Self-hosted",
-      body: "Run the Rust binary or the container anywhere, then point this console at it. The browser talks to your server directly and its token never reaches this host.",
-      points: [
-        "No limits beyond your disk",
-        "Single bearer token, explicit CORS",
-        "Same console, same SQL, same SDKs",
-      ],
-      cta: { to: "/docs", label: "Read the setup guide" },
-    },
-    {
-      Icon: Terminal,
-      title: "Embedded and offline",
-      price: "Library + CLI",
-      body: "Use the storage engine as a Rust crate, or open a data directory offline with the CLI to list databases and run queries without starting a server.",
-      points: [
-        "fluxdb-core as a dependency",
-        "Offline CLI over a data directory",
-        "JSON snapshot export and restore",
-      ],
-      cta: { href: REPOSITORY, label: "Browse the source" },
-    },
-  ];
-  return (
-    <section className="m-section m-section-alt" id="deploy">
-      <div className="m-shell">
-        <SectionHead
-          eyebrow="Deployment"
-          title="Three ways to run it"
-          lede="The hosted workspace and the self-hosted server are the same code. Nothing in the console is gated behind the hosted plan."
-        />
-        <div className="m-grid m-grid-3">
-          {options.map((option) => (
-            <article
-              key={option.title}
-              className={`m-plan${option.featured ? " is-featured" : ""}`}
-            >
-              <span className="m-card-icon">
-                <option.Icon size={18} aria-hidden />
-              </span>
-              <h3>{option.title}</h3>
-              <span className="m-plan-price">{option.price}</span>
-              <p>{option.body}</p>
-              <ul>
-                {option.points.map((point) => (
-                  <li key={point}>
-                    <Check size={14} aria-hidden /> {point}
-                  </li>
-                ))}
-              </ul>
-              {option.cta.to ? (
-                <Link
-                  className={`btn ${option.featured ? "btn-primary" : ""}`}
-                  to={option.cta.to}
-                >
-                  {option.cta.label}
-                </Link>
-              ) : (
-                <a
-                  className="btn"
-                  href={option.cta.href}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                >
-                  {option.cta.label}
-                </a>
-              )}
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/** The section most projects leave out. It is here because knowing the edges of
- *  a system is the difference between a demo and engineering. */
 function Limits() {
   const limits = [
     [
       "Single node",
-      "No clustering, replication, sharding or failover. One process owns a data directory, and only one process may open it.",
+      "No clustering, replication or failover. One process owns a data directory.",
     ],
     [
       "Memory-bound reads",
-      "The reader materialises SSTables and query snapshots in memory. Large datasets and high-cardinality tag sets need streaming and real indexing work before they would hold up.",
+      "Queries materialise SSTables in memory, so very large or high-cardinality data needs more work.",
     ],
     [
       "Not InfluxDB",
-      "No Flux language, no continuous queries, no downsampling tasks, no InfluxQL parity. The write endpoints accept line protocol; that is where the compatibility stops.",
+      "It accepts line protocol for writes. There is no Flux, InfluxQL parity or continuous queries.",
     ],
     [
-      "Bounded telemetry",
-      "Request history is the last 2,000 application requests, held in memory and reset on restart. It measures server processing time, not network latency or disk IOPS.",
-    ],
-    [
-      "Hosted demo sleeps",
-      "The public deployment scales to zero after 30 idle minutes, so the first visit after a quiet spell waits a few seconds for it to start. Its data is archived every five minutes and on every stop; a crash can lose the last few minutes of writes.",
-    ],
-    [
-      "No email delivery",
-      "Sign-up needs no verification and invitations are not mailed — they are applied when the invited address registers. A production deployment would need a mail provider.",
+      "Demo sleeps",
+      "The hosted instance scales to zero after 30 idle minutes; the first visit after that takes a few seconds.",
     ],
   ];
   return (
     <section className="m-section" id="limits">
       <div className="m-shell">
         <SectionHead
-          eyebrow="Honest limits"
-          title="What FluxDB is not"
-          lede="This is a single-node database built to be understood. Validate capacity, backups, restore and fault behaviour for your own workload before trusting it with anything you cannot lose."
+          kicker="Honest limits"
+          title="What FluxDB is not."
+          lede="A single-node database built to be understood. Test capacity, backups and fault behaviour for your own workload before trusting it."
         />
         <div className="m-limits">
           {limits.map(([title, body]) => (
             <div key={title}>
-              <h4>{title}</h4>
+              <h3>{title}</h3>
               <p>{body}</p>
             </div>
           ))}
@@ -1246,144 +631,77 @@ function Limits() {
   );
 }
 
-function Faq() {
-  const entries = [
-    [
-      "Is the demo data real?",
-      "It is explicitly synthetic and generated from a seeded pseudo-random generator, so every deployment produces the same shape. It is labelled as sample data everywhere it appears. The latency and point-count figures on this page, by contrast, are measured from the running instance.",
-    ],
-    [
-      "Can I point it at my own server?",
-      "Yes. Open Connections in the console, add your server's address, and the browser talks to it directly over /api/v1 with a token you enter per session. Nothing about your server or its token is stored here. A browser reaching a server on your own machine may prompt for local network access.",
-    ],
-    [
-      "What happens to a guest workspace?",
-      "It gets a private, writable copy of the sample data and is deleted automatically, with everything in it, 24 hours later. The shared showcase project is read-only for everyone including guests.",
-    ],
-    [
-      "How are passwords and API keys stored?",
-      "Passwords use Argon2id with per-password salts. API key secrets are 256 random bits, stored as a SHA-256 digest — a stretching KDF would add tens of milliseconds to every ingest request and buy nothing against a secret of that size. Session cookies are HttpOnly, SameSite=Lax, and only the hash of the cookie value is stored.",
-    ],
-    [
-      "Why SQL rather than a purpose-built language?",
-      "Because the interesting part of this project is the storage engine, and SQL meant the query surface could be a documented subset with clear errors instead of a new dialect nobody knows. GROUP BY time('5m') covers the bucketing that a metrics query actually needs.",
-    ],
-    [
-      "How fast is it?",
-      "That depends entirely on your hardware and workload, so there is no single number worth quoting. A benchmark script in the repository measures point throughput, batch write p95 and query p95 on your own host and prints the workload it used.",
-    ],
-  ];
-  return (
-    <section className="m-section m-section-alt">
-      <div className="m-shell">
-        <SectionHead eyebrow="Questions" title="Details worth knowing" />
-        <div className="m-faq">
-          {entries.map(([question, answer]) => (
-            <details key={question}>
-              <summary>{question}</summary>
-              <p>{answer}</p>
-            </details>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function ClosingCta() {
+function Closing() {
   return (
     <section className="m-closing">
       <div className="m-shell">
-        <div className="m-closing-card">
-          <h2>Open the demo and break something</h2>
-          <p>
-            One click, no email address. You get a read-only production fleet
-            with an incident in it and a private sandbox you can write to,
-            delete from and compact.
-          </p>
-          <div className="m-hero-cta">
-            <Link className="btn btn-primary btn-lg" to="/login?demo=1">
-              <Play size={17} aria-hidden /> Start the demo
-            </Link>
-            <Link className="btn btn-lg" to="/signup">
-              Create a free account
-            </Link>
-          </div>
+        <h2>Open the demo and break something.</h2>
+        <p>
+          A read-only production fleet with an incident in it, and a private
+          sandbox you can write to, delete from and compact.
+        </p>
+        <div className="m-cta">
+          <Link className="btn btn-primary btn-lg" to="/login?demo=1">
+            <Play size={16} aria-hidden /> Open the live demo
+          </Link>
+          <a
+            className="btn btn-lg"
+            href={REPOSITORY}
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            <Github size={16} aria-hidden /> Read the source
+          </a>
         </div>
       </div>
     </section>
   );
 }
 
-function MarketingFooter({ version }: { version?: string }) {
+function Footer({ version }: { version?: string }) {
   return (
     <footer className="m-footer">
       <div className="m-shell m-footer-inner">
-        <div>
-          <Logo />
-          <p>
-            A single-node time-series database in Rust, with a multi-tenant
-            console. Built as a portfolio project and documented as one.
-          </p>
-          {version && (
-            <span className="m-footer-version">Engine v{version}</span>
-          )}
-        </div>
-        <nav aria-label="Footer">
-          <div>
-            <h5>Product</h5>
-            <Link to="/signup">Create a workspace</Link>
-            <Link to="/login?demo=1">Live demo</Link>
-            <Link to="/docs">Documentation</Link>
-          </div>
-          <div>
-            <h5>Reference</h5>
-            <a href="/api/v1/openapi.json">OpenAPI document</a>
-            <a href={`${REPOSITORY}/blob/master/docs/ARCHITECTURE.md`}>
-              Architecture notes
-            </a>
-            <a href={`${REPOSITORY}/blob/master/docs/VERIFICATION.md`}>
-              Verification record
-            </a>
-          </div>
-          <div>
-            <h5>Source</h5>
-            <a href={REPOSITORY} target="_blank" rel="noreferrer noopener">
-              GitHub repository
-            </a>
-            <a href={`${REPOSITORY}/tree/master/sdk`}>
-              Python &amp; JS clients
-            </a>
-            <a href={`${REPOSITORY}/blob/master/README.md`}>Run it locally</a>
-          </div>
-        </nav>
-      </div>
-      <div className="m-shell m-footer-legal">
-        <span>
-          Sample data throughout the demo is synthetic and labelled as such.
+        <Logo size={22} />
+        <span className="m-footer-tag">
+          A time-series database you can read end to end
+          {version ? ` · engine v${version}` : ""}
         </span>
-        <span>MIT licensed</span>
+        <nav aria-label="Footer">
+          <Link to="/login?demo=1">Live demo</Link>
+          <Link to="/docs">Docs</Link>
+          <a href={`${REPOSITORY}/blob/master/docs/ARCHITECTURE.md`}>
+            Architecture
+          </a>
+          <a href={USE_CASES_URL} target="_blank" rel="noreferrer noopener">
+            Use cases
+          </a>
+          <a href={REPOSITORY} target="_blank" rel="noreferrer noopener">
+            GitHub <ArrowUpRight size={12} aria-hidden />
+          </a>
+        </nav>
       </div>
     </footer>
   );
 }
 
 function SectionHead({
-  eyebrow,
+  kicker,
   title,
   lede,
-  align = "center",
+  children,
 }: {
-  eyebrow: string;
+  kicker: string;
   title: string;
-  lede?: string;
-  align?: "center" | "left";
+  lede: string;
+  children?: ReactNode;
 }) {
   return (
-    <div className={`m-head${align === "left" ? " m-head-left" : ""}`}>
-      <span className="m-eyebrow m-eyebrow-plain">{eyebrow}</span>
+    <div className="m-head">
+      <p className="m-kicker">{kicker}</p>
       <h2>{title}</h2>
-      {lede && <p>{lede}</p>}
+      <p>{lede}</p>
+      {children}
     </div>
   );
 }
