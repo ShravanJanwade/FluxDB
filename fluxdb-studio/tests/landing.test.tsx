@@ -1,10 +1,18 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { ThemeProvider } from "../src/lib/theme";
 import Landing from "../src/marketing/Landing";
 
-afterEach(cleanup);
+const publicStats = vi.fn();
+vi.mock("../src/lib/api", () => ({
+  api: { publicStats: () => publicStats() },
+}));
+
+afterEach(() => {
+  cleanup();
+  publicStats.mockReset();
+});
 
 function landing() {
   return render(
@@ -16,56 +24,49 @@ function landing() {
   );
 }
 
-describe("the console tour checklist", () => {
-  // `.m-checklist li` is a two-column grid, [icon][text]. A grid container
-  // blockifies every child, so loose text nodes and inline <code>/<kbd> each
-  // became their own grid item and flowed through the icon column — the list
-  // rendered with its text stepping in and out of alignment and the shortcut
-  // keys stacked vertically.
-  it("gives every item exactly one icon and one text wrapper", () => {
+describe("the hero", () => {
+  it("leads with the one-click demo, then a free workspace", () => {
+    publicStats.mockRejectedValue(new Error("offline"));
     const { container } = landing();
-    const items = [...container.querySelectorAll(".m-checklist li")];
+    const ctas = [
+      ...container.querySelectorAll<HTMLAnchorElement>(".m-hero .m-cta a"),
+    ];
 
-    expect(items.length).toBeGreaterThan(0);
-    for (const item of items) {
-      expect(item.children).toHaveLength(2);
-      expect(item.children[0].tagName).toBe("svg");
-      expect(item.children[1].tagName).toBe("SPAN");
-      // Nothing may sit between them as a bare text node.
-      for (const node of item.childNodes) {
-        if (node.nodeType === Node.TEXT_NODE) {
-          expect(node.textContent?.trim()).toBe("");
-        }
-      }
-    }
+    expect(ctas.map((a) => a.getAttribute("href"))).toEqual([
+      "/login?demo=1",
+      "/signup",
+    ]);
+    expect(ctas[0].className).toContain("btn-primary");
   });
 
-  // JSX drops whitespace that spans a newline, so `carry\n<code>` rendered as
-  // "carry$timeFilter" with the words run together.
-  it("keeps a space before an inline code chip", () => {
+  it("quotes this instance's own figures, and nothing when it can't reach them", async () => {
+    publicStats.mockResolvedValue({
+      version: "1.4.0",
+      uptime_seconds: 7200,
+      demo_points: 1250000,
+      demo_sstables: 12,
+      requests_recorded: 1800,
+      query_p50_ms: 1.2,
+      query_p95_ms: 3.4,
+      query_p99_ms: 8.9,
+    });
+    landing();
+
+    expect(await screen.findByText("Live from this instance")).toBeTruthy();
+    expect(screen.getByText(/ms API p95/)).toBeTruthy();
+    expect(screen.getByText("engine v1.4.0")).toBeTruthy();
+
+    cleanup();
+    publicStats.mockRejectedValue(new Error("offline"));
     const { container } = landing();
-    const text = [...container.querySelectorAll(".m-checklist li")]
-      .map((item) => item.textContent ?? "")
-      .join(" ");
-
-    expect(text).toContain("carry $timeFilter");
-    expect(text).toContain("$interval");
-    expect(text).not.toMatch(/\w\$time/);
-  });
-
-  it("groups the command palette shortcut so its keys stay together", () => {
-    const { container } = landing();
-    const keys = container.querySelector(".m-keys");
-
-    expect(keys).not.toBeNull();
-    expect(
-      [...keys!.querySelectorAll("kbd")].map((k) => k.textContent),
-    ).toEqual(["Ctrl", "⌘", "K"]);
+    await Promise.resolve();
+    expect(container.querySelector(".m-live")).toBeNull();
   });
 });
 
 describe("the use cases section", () => {
   it("links each sector to its live app", () => {
+    publicStats.mockRejectedValue(new Error("offline"));
     const { container } = landing();
     const links = [
       ...container.querySelectorAll<HTMLAnchorElement>("#use-cases a.btn"),
@@ -76,5 +77,38 @@ describe("the use cases section", () => {
       "https://fluxdb-use-cases.vercel.app/healthcare",
       "https://fluxdb-use-cases.vercel.app/markets",
     ]);
+  });
+});
+
+describe("the limits", () => {
+  // The page states what FluxDB is not as plainly as what it is.
+  it("are on the front page", () => {
+    publicStats.mockRejectedValue(new Error("offline"));
+    const { container } = landing();
+    const titles = [...container.querySelectorAll("#limits h3")].map(
+      (h) => h.textContent,
+    );
+
+    expect(titles).toEqual([
+      "Single node",
+      "Memory-bound reads",
+      "Not InfluxDB",
+      "Demo sleeps",
+    ]);
+  });
+});
+
+describe("the quickstart", () => {
+  it("keeps a space between a comment and the command that follows", () => {
+    publicStats.mockRejectedValue(new Error("offline"));
+    const { container } = landing();
+    const code = container.querySelector("#quickstart pre")?.textContent ?? "";
+
+    expect(code).toContain(
+      "# Write a point with a project API key from the console.\ncurl -X POST",
+    );
+    expect(
+      container.querySelectorAll("#quickstart .is-comment").length,
+    ).toBeGreaterThan(0);
   });
 });
